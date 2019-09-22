@@ -1,8 +1,8 @@
 .macro debugmsg msg, var_a, var_b
-	.ifdef debug
+  .ifdef debug
             .if debug=1
-		    printmsg msg, var_a, var_b
-	     .endif
+        printmsg msg, var_a, var_b
+       .endif
       .endif
 .endmacro
 
@@ -16,9 +16,9 @@
 .endmacro
 
 .macro printmsg msg, var_a, var_b
-	PHA
-	JSR PRIMM
-	.asciiz msg
+  PHA
+  JSR PRIMM
+  .asciiz msg
       .ifnblank var_a
             LDA var_a
             JSR HEXTOASC
@@ -28,7 +28,7 @@
             JSR HEXTOASC
       .endif
       JSR CRLF
-	PLA
+  PLA
 .endmacro
 
 .macro      m_print32   addr

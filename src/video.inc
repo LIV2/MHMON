@@ -26,7 +26,7 @@ VIDINIT:    LDA #$B2
             STA CHARPTRL
             LDA #$01
             STA CREG
-		STZ CURSX
+            STZ CURSX
             STZ SCROLLLO
             STZ SCROLLHI
             STZ VGAREGPTR       ; Set scroll register to $0000

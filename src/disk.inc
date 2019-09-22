@@ -30,7 +30,7 @@ SEEK         = $0F
 VERSION      = $10
 CONFIGURE    = $13
 LOCK         = $14
-READID	 = $4A
+READID       = $4A
 .endscope
 
 ;
@@ -181,13 +181,13 @@ LBACHS:
 ; Reset the FDC and wait for it to report ready
 ; Carry will be set if the reset times out
 ;
-FDCRST:	debugmsg "Resetting FDC"
+FDCRST:     debugmsg "Resetting FDC"
             STZ FDCDOR
             delay $ff
-		LDA #$04
-		STA FDCDOR
-		LDX #$FF
-@WAIT:	LDA FDCMSR
+            LDA #$04
+            STA FDCDOR
+            LDX #$FF
+@WAIT:      LDA FDCMSR
             CMP #$80
             BEQ @DONE
             DEX

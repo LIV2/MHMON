@@ -1,11 +1,11 @@
 .scope ERR
-	EOK          = 0
-	ENOENT       = 1
-	EIO          = 2
-	ENOMEM       = 3
-	ENODEV       = 4
-	ENODISK      = 5
-	EFILENAME    = 6
+      EOK          = 0
+      ENOENT       = 1
+      EIO          = 2
+      ENOMEM       = 3
+      ENODEV       = 4
+      ENODISK      = 5
+      EFILENAME    = 6
       EFSNOSUPPORT = 7
       ESYNTAX      = 8
       ENOEXEC      = 9
@@ -29,7 +29,7 @@ PRINT:      PHX
             INY
             JMP @LOOP
 @END:       JSR CRLF
-		PLY
+            PLY
             PLX
             RTS
 
