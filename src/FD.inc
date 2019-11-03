@@ -79,6 +79,8 @@ FDCACHE:    PHX
             LDA FDS+FD::NEXTCLUSTER,X
             STA FDS+FD::CURCLUSTER+1,X
             STA FAT_CLUSTERNUM
+            LDA FDS+FD::DEVICE,X
+            STA FDCDRV
             JSR FAT_GETCLUSTER
             BCS @END
             LDA FAT_CLUSTERNUM+1
