@@ -96,7 +96,8 @@ FDCCOMMAND: PHA
 ;
 ; Initialize the FDC
 ;
-FDCINIT:    JSR FDCRST
+FDCINIT:    STZ FDCDRVSEL
+            JSR FDCRST
             BCC @RSTDONE
 @ERROR:     SEC
             RTS
@@ -124,28 +125,25 @@ FDCINIT:    JSR FDCRST
             BCS @ERROR
             JSR CHECKMSR_W
             BCS @ERROR
-            LDA #$D0              ; Step rate: 3ms, Head unload time: MAX
+            LDA #$80              ; Step rate: 8ms, Head unload time: MAX
             STA FDCFIFO
             JSR CHECKMSR_W
             BCS @ERROR
             LDA #$A1              ; Head Load time = 10ms, disable DMA
             STA FDCFIFO
             STZ FDCDRV
-            JSR FDCSELECT
-            JSR FDCRECAL
-            INC FDCDRV
-            JSR FDCSELECT
-            JSR FDCRECAL
-            JSR FDCDSELECT
+            JSR FDCSELECT         ; Select drive A
+            LDA #01
+            JSR FDCSEEK           ; Seek to Track 1
+            BCS @ERROR
+            LDA #34
+            JSR FDCSEEK           ; Seek to Track 34
+            BCS @ERROR
+            JSR FDCRECAL          ; Recalibrate
             BCS @END
-            ;LDA #$40
-            ;JSR FDCSEEK
-            ;BCS @END
-@RECAL:     ;JSR FDCRECAL
             STZ SECTORBUFPTR
             LDA #$10
             STA SECTORBUFPTR+1
-            LDA #21
 @END:       RTS
 
 LBACHS:     
@@ -566,7 +564,12 @@ FDCSEEK:    PHA
 ; Upper 4 bits are motor enable signals
 ; lower 2 bits are binary encoded drive number
 ;
-FDCSELECT:  PHX
+FDCSELECT:  LDA FDCDRVSEL
+            BEQ @GO
+            RTS
+@GO:        LDA #$FF
+            STA FDCDRVSEL
+            PHX
             LDA FDCDRV
             AND #$03
             TAX
@@ -577,17 +580,21 @@ FDCSELECT:  PHX
             ASL A
             ASL A
             ASL A
-@LOOP:      ASL A
-            ;DEX
-            ;BNE @LOOP
+            ASL A
             ORA FDCDOR
             STA FDCDOR
+            LDA SECONDSL
+            CLC
+            ADC #01
+@WAIT:      CMP SECONDSL
+            BNE @WAIT
             PLX
             RTS
 
 ; Deselect all drives
 ;
-FDCDSELECT: LDA FDCDOR
+FDCDSELECT: STZ FDCDRVSEL
+            LDA FDCDOR
             AND #$04
             STA FDCDOR
             RTS

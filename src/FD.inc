@@ -25,8 +25,6 @@ FOPEN:      LDA (FD_FILENAMEPTR)
             CMP #$02 ; todo support more drives...
             BCS @ERR
             STA FDCDRV
-            JSR FATINIT
-            BCS @ERR+2
             PHY
             LDY #$01
             LDA (FD_FILENAMEPTR),Y
@@ -41,6 +39,8 @@ FOPEN:      LDA (FD_FILENAMEPTR)
             ADC #$00
             STA FAT_FILENAMEPTR+1
             JSR FNPARSE
+            BCS @ERR+2
+            JSR FATINIT
             BCS @ERR+2
             JSR FAT_FIND
             BCS @ERR+2
@@ -117,7 +117,6 @@ FREAD:      LDA FDS,X
             CLC
             ADC #$C0
             STA FDPTR+1
-            ;STZ FDPTR
             LDA FDS+FD::SEEKPOS,X
             STA FDPTR
             LDA FDS+FD::SEEKPOS+1,X

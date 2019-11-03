@@ -81,7 +81,7 @@ FNPARSE:    LDX #$00
             INY
             DEX
             BNE @LOOP3
-            BRA @EXT
+            BRA @ERROR ; Extension missing?
 @JUMPTOEXT: INY
 @EXT:       LDX #08
 @EXTLOOP:   LDA (FAT_FILENAMEPTR),Y
@@ -92,8 +92,7 @@ FNPARSE:    LDX #$00
             BNE @EXTLOOP
             CLC
             RTS
-@ERROR:     JSR CHAROUT
-            SEC
+@ERROR:     SEC
             LDA #ERR::EFILENAME
             RTS
 

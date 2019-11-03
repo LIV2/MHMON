@@ -15,4 +15,4 @@ clean:
 	- rm -f obj/*
 	- rm -f bin/*
 install: all
-	- (cat loader.txt ; srec_cat bin/$(BINGILE) -Binary -offset 24576 -output -Execution_Start_Address 0x5000 -HEader "ROM") | pbcopy
+	- (cat loader.txt ; srec_cat bin/$(BINFILE) -Binary -offset 24576 -output -Execution_Start_Address 0x5000 -HEader "ROM") | pbcopy

@@ -94,6 +94,7 @@ FDCEOT           = FDCBPS+1
 FDCGPL           = FDCEOT+1
 FDCDTL           = FDCGPL+1
 FDCDRV           = FDCDTL+1
+FDCDRVSEL        = FDCDRV+1
 
 
 SECTORBUF       = $0A00
