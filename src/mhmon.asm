@@ -74,31 +74,8 @@ SECONDSL        = $050D
 SECONDSH        = $050E
 IOTMR           = $050F
 
-
-
 FDS              = $0900
-NEXTSECTOR       = $0980
-LBACYL           = NEXTSECTOR+2
-LBAHEAD          = LBACYL+1
-LBASECT          = LBAHEAD+1
-FDCTRIES         = LBASECT+1
-;;; FDC Vars
-FDCSR0           = FDCTRIES+1
-FDCSR1           = FDCSR0+1
-FDCSR2           = FDCSR1+1
-FDCTRN           = FDCSR2+1
-FDCHDN           = FDCTRN+1
-FDCSCN           = FDCHDN+1
-FDCBPS           = FDCSCN+1
-FDCEOT           = FDCBPS+1
-FDCGPL           = FDCEOT+1
-FDCDTL           = FDCGPL+1
-FDCDRV           = FDCDTL+1
-FDCDRVSEL        = FDCDRV+1
-
-
-SECTORBUF       = $0A00
-FATBUF          = $0C00
+FATBUF           = $0C00
 
 
 .ifdef duart

@@ -16,6 +16,34 @@ FDCFIFO = FDCBASE+5
 FDCDIR  = FDCBASE+7
 FDCCCR  = FDCBASE+7
 
+;;;;
+FDCVARSTART = $0980
+;;;;
+NEXTSECTOR = FDCVARSTART
+LBACYL     = NEXTSECTOR+2
+LBAHEAD    = LBACYL+1
+LBASECT    = LBAHEAD+1
+FDCTRIES   = LBASECT+1
+FDCSR0     = FDCTRIES+1
+FDCSR1     = FDCSR0+1
+FDCSR2     = FDCSR1+1
+FDCTRN     = FDCSR2+1
+FDCHDN     = FDCTRN+1
+FDCSCN     = FDCHDN+1
+FDCBPS     = FDCSCN+1
+FDCEOT     = FDCBPS+1
+FDCGPL     = FDCEOT+1
+FDCDTL     = FDCGPL+1
+FDCDRV     = FDCDTL+1
+FDCDRVSEL  = FDCDRV+1
+FDCSPT     = FDCDRVSEL+1 ; Sectors per track for selected disk
+FDCRATEA   = FDCSPT+1    ; Data rate drive A (0=500Kbit/s, 2=250Kbit/s)
+FDCRATEB   = FDCRATEA+1  ; Data rate drive B (0=500Kbit/s, 2=250Kbit/s)
+;;;;
+FDCVAREND  = FDCRATEB+1
+;;;;
+SECTORBUF  = $0A00
+
 
 ; FDC Commands
 ;
@@ -96,7 +124,11 @@ FDCCOMMAND: PHA
 ;
 ; Initialize the FDC
 ;
-FDCINIT:    STZ FDCDRVSEL
+FDCINIT:    LDX #FDCVAREND-FDCVARSTART
+            STZ FDCVARSTART,X
+            DEX
+            BNE FDCINIT
+            STZ FDCVARSTART
             JSR FDCRST
             BCC @RSTDONE
 @ERROR:     SEC
@@ -141,16 +173,15 @@ FDCINIT:    STZ FDCDRVSEL
             BCS @ERROR
             JSR FDCRECAL          ; Recalibrate
             BCS @END
-            STZ SECTORBUFPTR
-            LDA #$10
-            STA SECTORBUFPTR+1
+            JSR FDCCHGCHK+5       ; Assume disk is changed and setup media type if a disk is present
+            CLC                   ; Throw away error result from FDCCHGCHK
 @END:       RTS
 
 LBACHS:     
             m_copy16 NEXTSECTOR, MR_2  ; CYL = LBA/(Heads * Sectors per track)
             STZ MR_1
             STZ MR_1+1
-            LDA #36                    ; (Heads * Sectors per track) hardcoded to 36 for 1.44MB Floppy
+            LDA FDCSPT                 ; (Heads * Sectors per track)
             STA MR_1
             JSR divide
             LDA MR_2                   ; Get the result
@@ -196,14 +227,72 @@ FDCRST:     debugmsg "Resetting FDC"
 @DONE:      CLC
             RTS
 
+; CHANGE?
+
+FDCCHGCHK:  LDA FDCDIR    ; CHANGING THESE LINES WILL BREAK THINGS
+            BPL @NOCHANGE ; FDCINIT SKIPS TO FDCCHGCHK+5
+            LDA #$01
+            JSR FDCSEEK
+            LDA #$00
+            JSR FDCSEEK
+            BCS @NODISK
+            STZ FDCCCR
+            JSR FDCREADID
+            BCS @TRYDD
+            LDX FDCDRV
+            STZ FDCRATEA,X
+            CLC
+            RTS
+@TRYDD:     LDA #$02
+            STA FDCCCR
+            JSR FDCREADID
+            BCS @ERROR
+            LDA #$02
+            LDX FDCDRV
+            STA FDCRATEA,X
+@NOCHANGE:  CLC
+            RTS
+@NODISK:    LDA #ERR::ENODISK
+            RTS
+@ERROR:     LDA #ERR::EIO ; Didn't detect valid sector/track in both DD/HD rates
+            RTS
+
+; CONFIGDRV
+; Set media type for the drive selected by FDCDRV
+; Must be called after FDCSELECT & FDCCHGCHK
+FDCCFGDRV:  LDX FDCDRV
+            LDA FDCRATEA,X
+            STA FDCCCR
+            BNE @RATE_DD
+@RATE_HD:   LDA #36
+            BRA @END
+@RATE_DD:   LDA #18
+            STA FDCSPT
+@END:       RTS
+
 ; FDCREADLBA
 ; Convert SECTOR (in NEXTSECTOR) to C/H/S then fall through to FDCREAD
 ;
 FDCREADLBA: debugmsg "Sector: ", NEXTSECTOR+1, NEXTSECTOR
-            JSR LBACHS
+            JSR FDCSELECT
+            JSR FDCCHGCHK
+            BCS @DONE
+            JSR FDCCFGDRV
+            LDA #$03
+            STA FDCTRIES
+@RETRY:     JSR LBACHS
             LDA LBASECT
             LDX LBACYL
-            LDY LBAHEAD
+            LDY LBAHEAD            
+            JSR FDCREAD
+            BCC @DONE
+            LDX FDCTRIES
+            DEX
+            BEQ @DONE
+            LDA #$00
+            JSR FDCSEEK
+            BRA @RETRY
+@DONE:      RTS
 
 ; READ
 ; A: Sector
@@ -213,30 +302,12 @@ FDCREADLBA: debugmsg "Sector: ", NEXTSECTOR+1, NEXTSECTOR
 FDCREAD:    PHX
             PHA
             CPX #80         ; Don't seek past end of disk
-            BCS @SEEKERR
-            JSR FDCSELECT
-@CHECK:     LDA FDCDIR
-            BPL @GO
-            LDA #$01
-            JSR FDCSEEK
-            BCS @SEEKERR
-            LDA #$00
-            JSR FDCSEEK
-            BCS @SEEKERR
-            LDA FDCDIR
-            BPL @GO
-            PLA
-            PLX
-            LDA #ERR::ENODISK
-            SEC
-            RTS
-@SEEKERR:   PLA
-            PLX
             LDA #ERR::EIO
-            RTS
+            BCS @ERR2
 @GO:        TXA
             JSR FDCSEEK
-            BCS @SEEKERR
+            LDA #ERR::EIO
+            BCS @ERR2
             LDA #FDC::READ
             JSR FDCCOMMAND
             BCC @OK
@@ -325,7 +396,12 @@ FDCREAD:    PHX
 ; FDCREADLBA
 ; Convert SECTOR (in NEXTSECTOR) to C/H/S then fall through to FDCREAD
 ;
+            RTS ; return with error code
 FDCWRITELBA: debugmsg "Sector: ", NEXTSECTOR+1, NEXTSECTOR
+            JSR FDCSELECT
+            JSR FDCCHGCHK
+            BCS FDCWRITELBA-1
+            JSR FDCCFGDRV
             JSR LBACHS
             LDA LBASECT
             LDX LBACYL
