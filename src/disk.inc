@@ -127,7 +127,7 @@ FDCCOMMAND: PHA
 FDCINIT:    LDX #FDCVAREND-FDCVARSTART
             STZ FDCVARSTART,X
             DEX
-            BNE FDCINIT
+            BNE FDCINIT+2
             STZ FDCVARSTART
             JSR FDCRST
             BCC @RSTDONE
@@ -181,7 +181,7 @@ LBACHS:
             m_copy16 NEXTSECTOR, MR_2  ; CYL = LBA/(Heads * Sectors per track)
             STZ MR_1
             STZ MR_1+1
-            LDA FDCSPT                 ; (Heads * Sectors per track)
+            LDA #36                    ; (Heads * Sectors per track)
             STA MR_1
             JSR divide
             LDA MR_2                   ; Get the result
@@ -231,30 +231,39 @@ FDCRST:     debugmsg "Resetting FDC"
 
 FDCCHGCHK:  LDA FDCDIR    ; CHANGING THESE LINES WILL BREAK THINGS
             BPL @NOCHANGE ; FDCINIT SKIPS TO FDCCHGCHK+5
-            LDA #$01
+            LDA #01
             JSR FDCSEEK
             LDA #$00
             JSR FDCSEEK
-            BCS @NODISK
-            STZ FDCCCR
-            JSR FDCREADID
-            BCS @TRYDD
+            LDA FDCDIR
+            BMI @NODISK
+            LDA #$00
+            STA FDCCCR
+            delay $ff
+            ;JSR FDCREADID
+            ;BCS @TRYDD
             LDX FDCDRV
-            STZ FDCRATEA,X
+            LDA #$00
+            STA FDCRATEA,X
             CLC
             RTS
-@TRYDD:     LDA #$02
+@TRYDD:     LDA #$00
             STA FDCCCR
+            delay $ff
+            delay $ff
             JSR FDCREADID
             BCS @ERROR
-            LDA #$02
+            LDA #$00
             LDX FDCDRV
             STA FDCRATEA,X
 @NOCHANGE:  CLC
             RTS
 @NODISK:    LDA #ERR::ENODISK
+            SEC
             RTS
-@ERROR:     LDA #ERR::EIO ; Didn't detect valid sector/track in both DD/HD rates
+@ERROR:     BRK
+            BRK
+            LDA #ERR::EIO ; Didn't detect valid sector/track in both DD/HD rates
             RTS
 
 ; CONFIGDRV
@@ -262,13 +271,14 @@ FDCCHGCHK:  LDA FDCDIR    ; CHANGING THESE LINES WILL BREAK THINGS
 ; Must be called after FDCSELECT & FDCCHGCHK
 FDCCFGDRV:  LDX FDCDRV
             LDA FDCRATEA,X
+            lda #$00
             STA FDCCCR
             BNE @RATE_DD
 @RATE_HD:   LDA #36
             BRA @END
 @RATE_DD:   LDA #18
-            STA FDCSPT
-@END:       RTS
+@END:       STA FDCSPT
+            RTS
 
 ; FDCREADLBA
 ; Convert SECTOR (in NEXTSECTOR) to C/H/S then fall through to FDCREAD
@@ -283,13 +293,14 @@ FDCREADLBA: debugmsg "Sector: ", NEXTSECTOR+1, NEXTSECTOR
 @RETRY:     JSR LBACHS
             LDA LBASECT
             LDX LBACYL
-            LDY LBAHEAD            
+            LDY LBAHEAD
             JSR FDCREAD
             BCC @DONE
             LDX FDCTRIES
             DEX
+            STX FDCTRIES
             BEQ @DONE
-            LDA #$00
+            LDA #$40
             JSR FDCSEEK
             BRA @RETRY
 @DONE:      RTS
@@ -532,33 +543,89 @@ FDCREADID:  PHX
 @TRY:       DEY
             BNE @GO
             LDA #ERR::EIO
+            PLY
+            PLX
             SEC
-            BRA @ERROR
-@GO:        LDA #FDC::READID
-            BCS @DONE
-            JSR CHECKMSR_W
-            BCC @READY
             RTS
-@READY:     LDA FDCDRV
+@GO:        LDA #FDC::READID
+            JSR FDCCOMMAND
+            BCS @ERR
+            JSR CHECKMSR_W
+            BCS @ERR
+            LDA FDCDRV
+            ORA #$04
             STA FDCFIFO
             LDX #$00
-            JSR CHECKMSR_R
-            BCS @ERROR
-@LOOP:      LDA FDCFIFO
+@WAIT:      delay $05
+            LDA FDCMSR
+            AND #$D0
+            CMP #$D0
+            BNE @WAIT
+@LOOP:      delay $ff
+            LDA FDCFIFO
             STA FDCSR0,X
             INX
-            LDA FDCMSR
-            AND #$F0
-            CMP #$D0
-            BEQ @LOOP
+@READ:      LDA FDCMSR
+            AND #$10
+            BNE @LOOP
             LDA FDCSR0
             AND #$F0
-            BEQ @DONE
-            BRA @TRY
+            BNE @TRY
+            BRA @DONE
 @DONE:      CLC
-@ERROR:     PLY
+@ERR:       LDA FDCSR0
+            BRK
+            .byte $00
+            LDA FDCSR1
+            BRK
+            .byte $00
+            LDA FDCSR2
+            BRK
+            .byte $00
+;@DONE:
+            PLY
             PLX
             RTS
+
+
+;;FDCREADID:  PHX
+;            PHY
+;            LDY ;$04
+;@TRY:       DEY
+;            BNE @GO
+;            LDA ;ERR::EIO
+;            SEC
+;            BRA @ERROR
+;@GO:        LDA ;FDC::READID
+;            JSR FDCCOMMAND
+;            BCS @ERROR
+;            JSR CHECKMSR_W
+;            BCS @ERROR
+;@READY:     LDA FDCDRV
+;            STA FDCFIFO
+;            JSR CHECKMSR_R
+;            BCS @ERROR
+;            LDX ;$00
+;@LOOP:      LDA FDCFIFO
+;            STA FDCSR0,X
+;            INX
+;            LDA FDCMSR
+;            AND #$F0
+;            CMP #$D0
+;            BEQ @LOOP
+;            LDA FDCSR0
+;            AND ;$F0
+;            BEQ @DONE
+;            BRA @TRY
+;@DONE:      CLC
+;            PLY
+;            PLX
+;            RTS
+;@ERROR:     BRK
+;            .BYTE $00
+;            PLY
+;            PLX
+;            RTS
 
 ; RECALIBRATE
 ;
