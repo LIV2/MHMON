@@ -540,13 +540,6 @@ FDCWRITE:   PHX
 FDCREADID:  PHX
             PHY
             LDY #$04
-@TRY:       DEY
-            BNE @GO
-            LDA #ERR::EIO
-            PLY
-            PLX
-            SEC
-            RTS
 @GO:        LDA #FDC::READID
             JSR FDCCOMMAND
             BCS @ERR
@@ -556,37 +549,27 @@ FDCREADID:  PHX
             ORA #$04
             STA FDCFIFO
             LDX #$00
-@WAIT:      delay $05
-            LDA FDCMSR
-            AND #$D0
-            CMP #$D0
-            BNE @WAIT
-@LOOP:      delay $ff
-            LDA FDCFIFO
-            STA FDCSR0,X
-            INX
-@READ:      LDA FDCMSR
-            AND #$10
-            BNE @LOOP
-            LDA FDCSR0
-            AND #$F0
-            BNE @TRY
-            BRA @DONE
-@DONE:      CLC
-@ERR:       LDA FDCSR0
-            BRK
-            .byte $00
-            LDA FDCSR1
-            BRK
-            .byte $00
-            LDA FDCSR2
-            BRK
-            .byte $00
-;@DONE:
-            PLY
-            PLX
-            RTS
-
+@LOOP:      LDA FDCMSR
+            BIT #$10
+	    BEQ @DONE ; MSR reports no command in progress, end
+	    CMP #$D0  ; Does the FDC have a byte for me to read?
+	    BNE @LOOP ; No, wait until it does
+	    LDA FDCFIFO
+	    STA FDCSR0,X
+	    INX
+	    BRA @LOOP
+@DONE:      LDA FDCSR0
+	    AND #$F0
+	    BNE @ERR
+	    PLY
+	    PLX
+	    CLC
+	    RTS
+@ERR:       SEC
+            LDA #ERR::EIO
+	    PLX
+	    PLY
+	    RTS
 
 ;;FDCREADID:  PHX
 ;            PHY
@@ -688,9 +671,12 @@ FDCSEEK:    PHA
             JSR CHECKMSR_W
             BCS @ERR
             PLA
-            BCC @GO
-            RTS
+            BCC @GO   ; WTF?
+            RTS       ;
 @GO:        STA FDCFIFO
+;           LDA FDCMSR
+	    BRK       ;
+	    BRK       ; Check if seek bit works... then delay not needed for FDCSNS
             JSR FDCSNS
             LDA FDCSR0
             AND #$D0
