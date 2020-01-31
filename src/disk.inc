@@ -41,6 +41,7 @@ FDCRATEA   = FDCSPT+1    ; Data rate drive A (0=500Kbit/s, 2=250Kbit/s)
 FDCRATEB   = FDCRATEA+1  ; Data rate drive B (0=500Kbit/s, 2=250Kbit/s)
 ;;;;
 FDCVAREND  = FDCRATEB+1
+FDCCMD     = FDCVAREND+1
 ;;;;
 SECTORBUF  = $0A00
 
@@ -110,6 +111,7 @@ CHECKMSR_W: STZ IOTMR
             RTS
 
 FDCCOMMAND: PHA
+            STA FDCCMD
             JSR CHECKMSR_C
             BCS @ERR
             PLA
@@ -181,7 +183,8 @@ LBACHS:
             m_copy16 NEXTSECTOR, MR_2  ; CYL = LBA/(Heads * Sectors per track)
             STZ MR_1
             STZ MR_1+1
-            LDA #36                    ; (Heads * Sectors per track)
+            LDA FDCSPT
+            ASL A                      ; (Heads * Sectors per track)
             STA MR_1
             JSR divide
             LDA MR_2                   ; Get the result
@@ -194,7 +197,7 @@ LBACHS:
             LDA MR_3
 
             m_copy16 MR_3, MR_2        ; HEAD = (LBA % (Heads * Sectors per track)) / Sectors per track
-            LDA #18                    ; LBA % (Heads * Sectors per track) already in MR_3 as remainder of previous division
+            LDA FDCSPT                     ; LBA % (Heads * Sectors per track) already in MR_3 as remainder of previous division
             STA MR_1                   ; Sectors per track
             JSR divide
             LDA MR_2                   ; Get the result
@@ -240,20 +243,18 @@ FDCCHGCHK:  LDA FDCDIR    ; CHANGING THESE LINES WILL BREAK THINGS
             LDA #$00
             STA FDCCCR
             delay $ff
-            ;JSR FDCREADID
-            ;BCS @TRYDD
+            JSR FDCREADID
+            BCS @TRYDD
             LDX FDCDRV
             LDA #$00
             STA FDCRATEA,X
             CLC
             RTS
-@TRYDD:     LDA #$00
+@TRYDD:     LDA #$02
             STA FDCCCR
-            delay $ff
-            delay $ff
             JSR FDCREADID
             BCS @ERROR
-            LDA #$00
+            LDA #$02
             LDX FDCDRV
             STA FDCRATEA,X
 @NOCHANGE:  CLC
@@ -261,9 +262,7 @@ FDCCHGCHK:  LDA FDCDIR    ; CHANGING THESE LINES WILL BREAK THINGS
 @NODISK:    LDA #ERR::ENODISK
             SEC
             RTS
-@ERROR:     BRK
-            BRK
-            LDA #ERR::EIO ; Didn't detect valid sector/track in both DD/HD rates
+@ERROR:     LDA #ERR::EIO ; Didn't detect valid sector/track in both DD/HD rates
             RTS
 
 ; CONFIGDRV
@@ -271,12 +270,11 @@ FDCCHGCHK:  LDA FDCDIR    ; CHANGING THESE LINES WILL BREAK THINGS
 ; Must be called after FDCSELECT & FDCCHGCHK
 FDCCFGDRV:  LDX FDCDRV
             LDA FDCRATEA,X
-            lda #$00
             STA FDCCCR
             BNE @RATE_DD
-@RATE_HD:   LDA #36
+@RATE_HD:   LDA #18
             BRA @END
-@RATE_DD:   LDA #18
+@RATE_DD:   LDA #09
 @END:       STA FDCSPT
             RTS
 
@@ -399,7 +397,6 @@ FDCREAD:    PHX
 @END:       RTS
 @ERR:       PLA
             PLX
-            LDA #ERR::EIO
             SEC
             RTS
 
@@ -642,10 +639,11 @@ FDCSNS:     LDA #FDC::SENSE         ; Send SENSE command
             LDA FDCFIFO             ;
             STA FDCSR0              ; Save SR0
             delay $40
-            LDA FDCMSR              ; Sense interrupt will fail unless SEEK/RECAL is complete
+@WAIT:      LDA FDCMSR              ; Sense interrupt will fail unless SEEK/RECAL is complete
             AND #$F0                ; In this case MSR will be 0x80
             CMP #$80                ;
             BEQ FDCSNS              ; If it is, issue the sense again
+            LDA FDCMSR
 @RESULT:    JSR CHECKMSR_R          ; Get SR1
             BCS @END
             LDA FDCFIFO             ; Save SR1
@@ -671,12 +669,10 @@ FDCSEEK:    PHA
             JSR CHECKMSR_W
             BCS @ERR
             PLA
-            BCC @GO   ; WTF?
-            RTS       ;
 @GO:        STA FDCFIFO
-;           LDA FDCMSR
-	    BRK       ;
-	    BRK       ; Check if seek bit works... then delay not needed for FDCSNS
+@WAIT:      LDA FDCMSR
+            CMP #$10
+            BNE @WAIT
             JSR FDCSNS
             LDA FDCSR0
             AND #$D0
