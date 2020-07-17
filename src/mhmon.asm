@@ -1,170 +1,56 @@
 .pc02
 
-; MattMon
 ;debug=1
 duart=1
 video=1
+floppy=1
 ;acia=1
 via=1
 
-.ifdef acia
-ACIABASE =  $D110
-ACIADR  =   $D110
-ACIASR  =   ACIABASE+$1
-ACIACMR =   ACIABASE+$2
-ACIACNR =   ACIABASE+$3
-.endif
+.include "constants.inc"
+.include "macros.inc"
 
-.ifdef via
-VIABASE =   $D120
-VIAORA  =   VIABASE+$1
-VIAORB  =   VIABASE
-VIADDRB =   VIABASE+$2
-VIADDRA =   VIABASE+$3
-VIAT1CL =   VIABASE+$4
-VIAT1CH =   VIABASE+$5
-VIAT1LL =   VIABASE+$6
-VIAT1LH =   VIABASE+$7
-VIAT2CL =   VIABASE+$8
-VIAT2CH =   VIABASE+$9
-VIASR   =   VIABASE+$A
-VIAACR  =   VIABASE+$B
-VIAPCR  =   VIABASE+$C
-VIAIFR  =   VIABASE+$D
-VIAIER  =   VIABASE+$E
-VIAORA2 =   VIABASE+$F
-.endif
-
-; Zero Page vars
-
-FATSECTORBUFPTR = $E6
-FATSECTORDEST   = $E8
-SECTORBUFPTR    = $EA
-FAT_FILENAMEPTR = $EC
-FDPTR           = $EE ; Pointer into file descriptors
-FD_FILENAMEPTR  = $F0
-CREG            = $F2 ; Config Flags, 0x01 - Video Enable, 0x02 - Video Mode (0 - Mode 1 (640x480), 1 - Mode 2 (640x400)), 0x04 - 8x8 Font selection (Mode 2 only)
-CHARPTRL        = $F3 ; Pointer to character in VRAM, usually VIDPTR+CURSX
-CHARPTRH        = $F4
-VIDPTRL         = $F5 ; Pointer to current line in VRAM
-VIDPTRH         = $F6
-STARTL          = $F7
-STARTH          = $F8
-ENDL            = $F9
-ENDH            = $FA
-STRLO           = $FD
-STRHI           = $FE
-
-INBUF           = $0200 ; 0200-027F 128 Byte Buffer
-CMDBUF          = $0280
-INPBUFHEAD      = $0300 ; key buffer index
-INPBUFTAIL      = $0501
-CMDBUFHEAD      = $0502
-CMDBUFPTR       = $0503
-HEXTMP          = $0504
-CHECKSUM        = $0505
-CURSX           = $0506
-IRQ_softVector  = $0507 ; Soft vector allows wedging in an IRQ Handler
-IRQ_softVectorH = $0508
-SCROLLLO        = $0509
-SCROLLHI        = $050A
-COLOR           = $050B
-JIFFIES         = $050C
-SECONDSL        = $050D
-SECONDSH        = $050E
-IOTMR           = $050F
-
-
-
-FDS              = $0900
-NEXTSECTOR       = $0980
-LBACYL           = NEXTSECTOR+2
-LBAHEAD          = LBACYL+1
-LBASECT          = LBAHEAD+1
-FDCTRIES         = LBASECT+1
-;;; FDC Vars
-FDCSR0           = FDCTRIES+1
-FDCSR1           = FDCSR0+1
-FDCSR2           = FDCSR1+1
-FDCTRN           = FDCSR2+1
-FDCHDN           = FDCTRN+1
-FDCSCN           = FDCHDN+1
-FDCBPS           = FDCSCN+1
-FDCEOT           = FDCBPS+1
-FDCGPL           = FDCEOT+1
-FDCDTL           = FDCGPL+1
-FDCDRV           = FDCDTL+1
-FDCDRVSEL        = FDCDRV+1
-
-
-SECTORBUF       = $0A00
-FATBUF          = $0C00
-
-
-.ifdef duart
-DUART        = $D000
-DUARTMRA     = DUART
-DUARTSRA     = DUART+$1
-DUARTCSRA    = DUART+$1
-DUARTCRA     = DUART+$2
-DUARTRXA     = DUART+$3
-DUARTTXA     = DUART+$3
-DUARTIPCR    = DUART+$4
-DUARTACR     = DUART+$4
-DUARTISR     = DUART+$5
-DUARTIMR     = DUART+$5
-DUARTCTU     = DUART+$6
-DUARTCTPU    = DUART+$6
-DUARTCTL     = DUART+$7
-DUARTCTPL    = DUART+$7
-DUARTMRB     = DUART+$8
-DUARTSRB     = DUART+$9
-DUARTCSRB    = DUART+$9
-DUARTCRB     = DUART+$A
-DUARTRXB     = DUART+$B
-DUARTTXB     = DUART+$B
-DUARTIVEC    = DUART+$C
-DUARTIPR     = DUART+$D
-DUARTSOPR    = DUART+$E
-DUARTROPR    = DUART+$F
-.endif
 
 .SEGMENT "ROMCODE"
 
 ; Pointers to functions so that ROM changes don't break programs
 V_CHARIN:   JMP CHARIN      ; Char in
-V_CHAROUT:  JMP CHAROUT     ; Char our
+V_CHAROUT:  JMP CHAROUT     ; Char out
 V_CRLF:     JMP CRLF        ; Print CRLF
-V_LOAD:     JMP LOAD        ; LOAD (do nothing)
+V_PROMPT:   JMP PROMPT      ; LOAD (do nothing)
 V_SAVE:     JMP SAVE        ; SAVE (do nothing)
 V_CLS:      JMP CLS         ; Clear screen
 V_HEXTOASC: JMP HEXTOASC    ; HEX byte to Ascii
 V_CHARINW:  JMP CHARINW     ; Char in (wait)
 V_HEXOUT:   JMP HEXOUT      ; Hex out
 V_CHARINU:  JMP CHARINU     ; Char in uppercase
+.ifdef floppy
 V_FOPEN:    JMP FOPEN
 V_FCLOSE:   JMP FDFREE
 V_FREAD:    JMP FREAD
-V_ERRMSG:   JMP PRERR
-
-.include "errors.inc"
-.include "math.inc"
-.include "macros.inc"
-.include "disk.inc"
-.include "fat.inc"
-.include "FD.inc"
-.include "video.inc"
-
-PRERR:      JMP ERRMSG::PRINT
-
-COLDSTRT:   SEI             ;   Disable interrupts
-            LDA #<IRQ_ROM
-            STA IRQ_softVector
+.else
+; No file support compiled, do nothing
+; Add NOPs so that the vector alignment is preserved
+V_FOPEN:    NOP
+            NOP
+            RTS
+V_FCLOSE:   NOP
+            NOP
+            RTS
+V_FREAD:    NOP
+            NOP
+            RTS
+.endif
+V_ERRMSG:   JMP ERRPRINT
+; **** COLD START ENTRY ****
+; Set up interrupts, stack, hardware and drop through to the promp
+COLDSTRT:   SEI                   ;   Disable interrupts
+            LDA #<IRQ_ROM         ;   Set softVector to default ROM IRQ handler
+            STA IRQ_softVector    ;   softVector allows inserting additional IRQ handlers before ROM handlers
             LDA #>IRQ_ROM
             STA IRQ_softVector+1
-            LDX #$FF        ;
-            TXS             ;   Init Stack Pointer
-            LDX #$00
+            LDX #$FF              ;   Initialize the Stack Pointer
+            TXS
             STZ SECONDSL
             STZ SECONDSH
             STZ JIFFIES
@@ -172,10 +58,6 @@ COLDSTRT:   SEI             ;   Disable interrupts
             STZ INPBUFTAIL
             STZ CMDBUFHEAD
             STZ CMDBUFPTR
-
-STACKINIT:  STZ $0100,X
-            INX
-            BNE STACKINIT
 .ifdef duart
 DUARTINIT:  LDA #$B0          ; Reset MRA Pointer to $00
             STA DUARTCRA
@@ -229,16 +111,22 @@ VIAINIT:    LDA #$7F        ;
 .ifdef video
             JSR VIDINIT
 .endif
-
             CLI
+.ifdef floppy
 INITFLOPPY: JSR FDZERO
             JSR FDCINIT
             BCC MAIN
             printmsg "FDC ERROR"
-MAIN:       LDA #$00
+.endif
+MAIN:       LDA #$00   ; Print boot message
             JSR STROUT
             JMP PROMPT
+; **** END OF COLD START ****
+;
+; **** Public routines ****
 
+; CHARIN - Get a character from INPBUF (if there is one)
+; Returns Character in A with carry set, carry clear if INBUF is empty
 CHARIN:     PHX
             JSR CHARREADY
             BEQ @NOCHAR
@@ -258,10 +146,12 @@ CHARIN:     PHX
             CLC
             RTS
 
+; CHARINW - CHARIN but blocking until a character is ready
 CHARINW:    JSR CHARIN
             BCC CHARINW
             RTS
 
+; CHARINU - CHARIN but force uppercase characters
 CHARINU:    JSR CHARIN
             BCC @END+1
             CMP #'a'
@@ -272,13 +162,15 @@ CHARINU:    JSR CHARIN
 @END:       SEC
             RTS
 
+; CHAROUT - Send a character to the screen/terminal
+; Parameters: A - Character
 CHAROUT:
 .ifdef video
             PHA
-            JSR COUTVIDEO
+            JSR COUTVIDEO     ; Output the character to the screen
             PLA
 .endif
-CHAROUTS:   CMP #$7F
+CHAROUTS:   CMP #$7F          ; Change DEL to Backspace
             BNE @NOTDEL
             LDA #$08
 @NOTDEL:
@@ -295,68 +187,46 @@ ACIATX:     PHA
 .endif
 .ifdef duart
 DUARTTX:    PHA
-            LDA DUARTSRA
+            LDA DUARTSRA      ; Does the buffer have room for our character?
             AND #$04
-            BEQ DUARTTX+1
+            BEQ DUARTTX+1     ; If not, loop until there is room
             PLA
-            STA DUARTTXA
+            STA DUARTTXA      ; Send the character to the DUART
 .endif
             RTS
 
-STROUT:     PHX
-            PHY
-            ASL A
-            TAX
-            LDA STR_TABLE,X
-            STA STRLO
-            LDA STR_TABLE+1,X
-            STA STRHI
+; CLS: Clear the screen
+CLS:        PHY
+            LDA #$A0
+            STA STARTH
+            STZ STARTL
             LDY #$00
-STRLOOP:    LDA (STRLO),Y
-            BEQ STREND
-            CMP #$FF
-            BNE @TEXT
+            LDA #$20
+@LOOP:      LDA #$20
+            STA (STARTL), Y
             INY
-            LDA (STRLO),Y
-            STA COLOR
+            LDA COLOR
+            STA (STARTL), Y
             INY
-            BRA STRLOOP
-@TEXT:      JSR CHAROUT
-            INY
-            BRA STRLOOP
-STREND:     PLY
-            PLX
+            BNE @LOOP
+            INC STARTH
+            LDA STARTH
+            CMP #$C0
+            BEQ @END
+            LDA #$20
+            BRA @LOOP
+@END:       PLY
             RTS
 
-; Print string following the JSR to this
-PRIMM:
-      pla               ; get low part of (string address-1)
-      sta   STRLO
-      pla               ; get high part of (string address-1)
-      sta   STRHI
-      bra   primm3
-primm2:
-      jsr   CHAROUT        ; output a string char
-primm3:
-      inc   STRLO         ; advance the string pointer
-      bne   primm4
-      inc   STRHI
-primm4:
-      lda   (STRLO)       ; get string char
-      bne   primm2      ; output and continue if not NUL
-      lda   STRHI
-      pha
-      lda   STRLO
-      pha
-      rts               ; proceed at code following the NUL
-
-
+; CRLF - Print a Carriage return followed by a Linefeed
 CRLF:       LDA #$0A
             JSR CHAROUT
             LDA #$0D
             JSR CHAROUT
             RTS
 
+; HEXTOASC - Print a byte as Hex
+; Parameters: A - Byte to print
 HEXTOASC:   PHA
             LSR
             LSR
@@ -371,6 +241,8 @@ HEXTOASC:   PHA
             PLA
             RTS
 
+; HEXOUT - Print a digit in Hex
+; Parameters: A - nibble to print as hex
 HEXOUT:     PHA
             CLC
             CMP #$0A
@@ -381,6 +253,123 @@ HEXL:       ADC #$30
             PLA
             RTS
 
+
+; PROMPT - Command prompt
+; Programs returning to the monitor on exit should jump here via V_PROMPT
+PROMPT:     JSR CRLF
+            LDA #']'
+            JSR CHAROUT
+            LDX #$00
+            STZ CMDBUFPTR     ; Reset CMDBUF to start a new command
+            STZ CMDBUF,X
+@PROMPTL:   JSR CHARINU
+            BCC @PROMPTL
+            CMP #$0D          ; Enter?
+            BEQ @GO           ; Go run command
+            CMP #$7F          ; Delete/Backspace?
+            BEQ @BS
+            CMP #$08
+            BNE @STORE
+@BS:        DEX               ; Decrement CMDBUFPTR (in X)
+            BPL @NOERR        ; If we reached the beginning of the line
+            LDA #$07          ; Send BELL to the terminal
+            JSR CHAROUT
+            INX               ; Move CMDBUFPTR back to 0
+            BRA @PROMPTL      ; Go back to waiting for a character
+@NOERR:     JSR CHAROUT       ; Send the Backspace to the terminal (move the cursor back 1 character)
+            PHA
+            LDA #' '          ; Rub out the character that was there (moves the cursor forward)
+            JSR CHAROUT       ;
+            PLA
+            JSR CHAROUT       ; Move the cursor back again
+            STZ CMDBUF,X      ; Terminate the CMDBUF string here
+            BRA @PROMPTL      ; Go back to waiting for input
+
+@STORE:     CMP #' '          ; Check if character is printable (< Space)
+            BCC @PROMPTL      ; If not, ignore it
+            CMP #$7F          ; >= DEL
+            BCS @PROMPTL      ; Ignore it
+            JSR CHAROUT       ; Print it
+            STA CMDBUF,X      ; Store it in CMDBUF
+            INX               ; Increment CMDBUFPTR
+            BPL @PROMPTL      ; Bounds check of CMDBUF's 127 byte buffer. Branch unless full
+            DEX               ; Decrement CMDBUFPTR to keep it within range
+            STZ CMDBUF,X      ; Terminate the CMDBUFPTR string at 127 bytes to prevent overflow on read
+            LDA #$07
+            JSR CHAROUT       ; Signal the full buffer with BELL
+            LDA #$7F          ; Delete the last character printed
+            JSR CHAROUT
+            BRA @PROMPTL      ; Continue reading input
+; GO - Enter was pressed, find the command in the CMDTAB and if found, run it
+@GO:        STZ CMDBUF,X      ; Terminate the CMDBUF string
+            LDX #$FF
+@SEARCH:    INX
+            LDA T_COMMAND_TAB,X
+            BEQ UNKNOWN       ; Hit NULL while searching T_COMMAND_TAB, do syntax e
+            CMP CMDBUF        ; Compare the 1st character in CMDBUF with COMMAND_TAB_X
+            BNE @SEARCH       ; If not matched, keep searching
+            TXA
+            ASL A
+            TAX               ; Put the command offset in T_COMMAND_ADDR into X
+            LDA #$02
+            STA CMDBUFPTR     ; Point CMDBUFPTR to the command args
+            JSR CRLF
+            LDA CMDBUF+1      ; Load char 2 of CMDBUF into A
+                              ; Useful for syntax checking in the command, will be 0 if no args 
+            JMP (T_COMMAND_ADDR,X)
+@ERROR:     LDA #ERR::ESYNTAX
+            JSR ERRPRINT
+            JMP PROMPT
+; UNKNOWN - Print "Invalid command"
+UNKNOWN:    JSR CRLF
+            JSR CRLF
+            LDA #$09
+            JSR STROUT
+            JMP PROMPT
+
+; **** Private routines ****
+
+; HEXGET - Parse a hex number from CMDBUF
+; Parameters: CMDBUF - Byte in hex notation
+; Returns: Byte in A, Carry clear on error
+HEXGET:     PHX
+            LDX CMDBUFPTR
+            LDA CMDBUF,X
+            JSR NIBBLE
+            BCC @END
+            ASL
+            ASL
+            ASL
+            ASL
+            STA HEXTMP
+            INX
+            LDA CMDBUF,X
+            JSR NIBBLE
+            BCC @END
+            ORA HEXTMP
+            SEC
+@END:       INX
+            STX CMDBUFPTR
+            PLX
+            RTS
+NIBBLE:     SEC
+            SBC #'0'
+            CMP #$0A
+            BCC @NUM
+            SEC
+            SBC #'A'-':'
+            CMP #$0F+1
+            BCS @ERROR
+            CMP #$0A
+            BCC @ERROR
+@NUM:       SEC
+            RTS
+@ERROR:     CLC
+            RTS
+
+; BINGET - Parse a binary number from CMDBUF to a byte
+; Parameters: Binary string in CMDBUF
+; Returns: A - Byte, Carry - Set on error
 BINGET:     PHX
             PHY
             LDY #$08
@@ -409,6 +398,8 @@ BINGET:     PHX
 @ERROR:     CLC
             BRA @END
 
+; BINPUT - Print a byte in binary notation
+; Parameters: A - byte to print
 BINPUT:     PHA
             LDY #$08
             PHA
@@ -425,148 +416,57 @@ BINPUT:     PHA
             PLA
             RTS
 
-HEXGET:     PHX
-            LDX CMDBUFPTR
-            LDA CMDBUF,X
-            JSR NIBBLE
-            BCC @END
-            ASL
-            ASL
-            ASL
-            ASL
-            STA HEXTMP
-            INX
-            LDA CMDBUF,X
-            JSR NIBBLE
-            BCC @END
-            ORA HEXTMP
-            SEC
-@END:       INX
-            STX CMDBUFPTR
-            PLX
-            RTS
-
-ISHEX:
-NIBBLE:     SEC
-            SBC #'0'
-            CMP #$0A
-            BCC @NUM
-            SEC
-            SBC #'A'-':'
-            CMP #$0F+1
-            BCS @ERROR
-            CMP #$0A
-            BCC @ERROR
-@NUM:       SEC
-            RTS
-@ERROR:     CLC
-            RTS
-
-@END:       JMP PROMPT
-
-HEXIN:      PHX
-            LDX #$02
-@HEXNIBBLE: JSR CHARINU
-            BCC @HEXNIBBLE
-            CMP #$1B    ; ESC
-            BEQ @HEXERR
-            CMP #$3A        ; CHAR(9)+1
-            BCS @HEXINAF
-            CMP #$30
-            BCC @HEXNIBBLE
-            AND #$0F
-            BRA @HEXEND
-@HEXINAF:   SBC #$37
-            CMP #$0A
-            BCC @HEXNIBBLE
-            CMP #$10
-            BCS @HEXNIBBLE
-@HEXEND:    JSR HEXOUT
-            DEX
-            BEQ @HEXINLO
-            ASL
-            ASL
-            ASL
-            ASL
-            STA HEXTMP
-            BRA @HEXNIBBLE
-@HEXINLO:   ORA HEXTMP
-            CLC
-            PLX
-            RTS
-@HEXERR:    SEC
-            PLX
-            RTS
-
-UNKNOWN:    JSR CRLF
-            JSR CRLF
-            LDA #$09
-            JSR STROUT
-
-PROMPT:     JSR CRLF
-            LDA #']'
-            JSR CHAROUT
-            LDX #$00
-            STZ CMDBUFPTR
-            STZ CMDBUF,X
-@PROMPTL:   JSR CHARINU
-            BCC @PROMPTL
-            CMP #$0D
-            BEQ @GO
-            CMP #$7F
-            BEQ @BS
-            CMP #$08
-            BNE @STORE
-@BS:        DEX
-            BPL @NOERR
-            LDA #$07
-            JSR CHAROUT
-            INX
-            BRA @PROMPTL
-@NOERR:     JSR CHAROUT
-            PHA
-            LDA #' '
-            JSR CHAROUT
-            PLA
-            JSR CHAROUT
-            STZ CMDBUF,X
-            BRA @PROMPTL
-@STORE:     CMP #' '
-            BCC @PROMPTL
-            CMP #$7F
-            BCS @PROMPTL
-            JSR CHAROUT
-            STA CMDBUF,X
-            INX
-            BPL @PROMPTL
-            DEX
-            STZ CMDBUF,X
-            LDA #$07
-            JSR CHAROUT
-            LDA #$7F
-            JSR CHAROUT
-            BRA @PROMPTL
-@GO:        STZ CMDBUF,X
-            LDX #$FF
-@SEARCH:    INX
-            LDA T_COMMAND_TAB,X
-            BEQ UNKNOWN
-            CMP CMDBUF
-            BNE @SEARCH
-            LDA CMDBUF+1
-            PHA
-            TXA
+; STROUT - Print a string from STR_TABLE indexed by A
+; Parameters: A - String index
+STROUT:     PHX
+            PHY
             ASL A
             TAX
-            LDA #$02
-            STA CMDBUFPTR
-            JSR CRLF
-            PLA
-            JMP (T_COMMAND_ADDR,X)
-@ERROR:     LDA #ERR::ESYNTAX
-            JSR ERRMSG::PRINT
-            JMP PROMPT
+            LDA STR_TABLE,X
+            STA STRLO
+            LDA STR_TABLE+1,X
+            STA STRHI
+            LDY #$00
+STRLOOP:    LDA (STRLO),Y
+            BEQ STREND
+            CMP #$FF
+            BNE @TEXT
+            INY
+            LDA (STRLO),Y
+            STA COLOR
+            INY
+            BRA STRLOOP
+@TEXT:      JSR CHAROUT
+            INY
+            BRA STRLOOP
+STREND:     PLY
+            PLX
+            RTS
+; PRIMM
+; Print string following the JSR to this
+PRIMM:
+      pla               ; get low part of (string address-1)
+      sta   STRLO
+      pla               ; get high part of (string address-1)
+      sta   STRHI
+      bra   primm3
+primm2:
+      jsr   CHAROUT        ; output a string char
+primm3:
+      inc   STRLO         ; advance the string pointer
+      bne   primm4
+      inc   STRHI
+primm4:
+      lda   (STRLO)       ; get string char
+      bne   primm2      ; output and continue if not NUL
+      lda   STRHI
+      pha
+      lda   STRLO
+      pha
+      rts               ; proceed at code following the NUL
 
+
+; **** Commands ****
 BARS:       
 .ifdef video
             BNE @SYNTAXERR
@@ -617,6 +517,7 @@ PRINTBARS:  STA STARTL
 ;
             RTS
 
+; Sleep
 SLEEP:      CMP #' '
             BEQ @SYNTAXOK
             JMP SYNTAXERR
@@ -639,7 +540,7 @@ SLEEP:      CMP #' '
             BNE @WAIT
 @EXIT:      JMP PROMPT
 
-
+; Fill memory
 FILL:       CMP #' '
             BEQ @SYNTAXOK
             JMP SYNTAXERR
@@ -674,8 +575,10 @@ FILL:       CMP #' '
             PLA
             JMP PROMPT
 
+; DISPLAYRAM
+; Displays memory contents at the address specified
+; Parameters: <start address> [end address]
 DISPLEND2:  JMP SYNTAXERR
-
 READ16:     LDA STARTL
             SEC
             ADC #$FF
@@ -684,34 +587,36 @@ READ16:     LDA STARTL
             ADC #$00
             STA ENDH
             BRA GO_DISPLAY
+; We start here
 DISPLAYRAM: CMP #' '
-            BNE DISPLEND2
-            JSR HEXGET
-            BCC DISPLEND2
-            STA STARTH
-            JSR HEXGET
-            BCC DISPLEND2
-            AND #$F0
-            STA STARTL
+            BNE DISPLEND2     ; It doesn't appear we got a start address, Syntax error
+            JSR HEXGET        ; Get start address high byte
+            BCC DISPLEND2     ; Syntax error?
+            STA STARTH        ; Store start address high
+            JSR HEXGET        ; Get start address low
+            BCC DISPLEND2     ; Syntax error?
+            AND #$F0          ; Zero out the lower nibble, so we always display at least 16 bytes
+            STA STARTL        ; Store low byte
             LDX CMDBUFPTR
             LDA CMDBUF,X
-            CMP #' '
-            BNE READ16
+            CMP #' '          ; Have we been supplied with an end address?
+            BNE READ16        ; If not, display 256 bytes by default
             INX
             STX CMDBUFPTR
-            JSR HEXGET
-            BCC DISPLEND2
-            STA ENDH
-            JSR HEXGET
-            BCC DISPLEND2
-            ORA #$0F
+            JSR HEXGET        ; Get End high address
+            BCC DISPLEND2     ; Syntax error?
+            STA ENDH          ; Store high address
+            JSR HEXGET        ; Get Low end address
+            BCC DISPLEND2     ; Syntax error?
+            ORA #$0F          ; Always display in rows of 16 bytes
             INC
             BNE @NOCARRY
-            INC ENDH          
+            INC ENDH
 @NOCARRY:   STA ENDL
+; Draw the header
 GO_DISPLAY: JSR CRLF
             LDA #$02
-            JSR STROUT
+            JSR STROUT        ; Print "Addr: "
             LDA #$09          ; TAB
             JSR CHAROUT
             LDX #$10
@@ -741,8 +646,8 @@ DISPLINE:   LDX #$10          ; Display Bytes at START,Y
             LDA #$09          ; TAB
             JSR CHAROUT       ;
 DISPLINE1:  LDA (STARTL),Y    ; Display 16 Bytes 0-F for each line
-            JSR HEXTOASC            ;
-            LDA #' '                ;
+            JSR HEXTOASC      ;
+            LDA #' '          ;
             JSR CHAROUT
             INC STARTL
             BNE @NOWRAP
@@ -755,7 +660,6 @@ DISPLINE1:  LDA (STARTL),Y    ; Display 16 Bytes 0-F for each line
             BCS DISPLEND
 @NOMATCH:   DEX                     ;
             BNE DISPLINE1           ; If we have displayed <16 Bytes keep looping
-                      
             BRA DISPLINE            ;
 DISPLEND:   JMP PROMPT
 
@@ -801,7 +705,7 @@ READMEM:    CMP #' '
             JSR HEXTOASC
 @EXIT:      JMP PROMPT
 @ERROR:     LDA #ERR::ESYNTAX
-            JSR ERRMSG::PRINT
+            JSR ERRPRINT
             BRA @EXIT
 
 WRITEMEM:   CMP #' '
@@ -852,24 +756,23 @@ WRITEMEM:   CMP #' '
 @EXIT:      JMP PROMPT
 @ERROR:     JMP SYNTAXERR
 
+; Jump: jump to the specified address
 JUMP:       CMP #' '
             BNE @SYNTAX
             LDA #$04
             JSR STROUT
             JSR HEXGET
             BCC @EXIT
-            ;JSR HEXTOASC
             STA STARTH
             JSR HEXGET
             BCC @EXIT
-            ;JSR HEXTOASC
             STA STARTL
             JSR CRLF
             JSR CRLF
             JMP (STARTL)
 @EXIT:      JMP PROMPT
 @SYNTAX:    LDA #ERR::ESYNTAX
-            JSR ERRMSG::PRINT
+            JSR ERRPRINT
             BRA @EXIT
 
 MEMTEST:    BEQ @SYNTAXOK
@@ -933,39 +836,20 @@ MEMTEST:    BEQ @SYNTAXOK
             PLA
             JMP PROMPT
 
+; C_CLS: CLS wrapped in a command
+;
 C_CLS:      BEQ @SYNTAXOK
             JMP SYNTAXERR
 @SYNTAXOK:  JSR CLS
             JMP PROMPT
 
-CLS:        PHY
-            LDA #$A0
-            STA STARTH
-            STZ STARTL
-            LDY #$00
-            LDA #$20
-@LOOP:      LDA #$20
-            STA (STARTL), Y
-            INY
-            LDA COLOR
-            STA (STARTL), Y
-            INY
-            BNE @LOOP
-            INC STARTH
-            LDA STARTH
-            CMP #$C0
-            BEQ @END
-            LDA #$20
-            BRA @LOOP
-@END:       PLY
-            RTS
 
 SETMODE:    BNE SYNTAXERR
             JSR VIDMODE
             JMP PROMPT
 
 SYNTAXERR:  LDA #ERR::ESYNTAX
-            JSR ERRMSG::PRINT
+            JSR ERRPRINT
             JMP PROMPT
 
 UNLOADER:   LDA #$01
@@ -982,7 +866,7 @@ UNLOAD:     BEQ @SYNTAXOK
             BPL @LOOP
             JMP $1000
 
-
+.ifdef floppy
 LOADFILE:   CMP #' '
             BNE @STXERR
             LDA #<CMDBUF
@@ -1030,49 +914,55 @@ LOADFILE:   CMP #' '
             JSR FDFREE
             PLA
             SEC
-            JSR ERRMSG::PRINT
+            JSR ERRPRINT
             JMP PROMPT
 @END:       JSR FDFREE
             CLC
             JMP (ENDL)
 @NOTEXEC:   LDA #ERR::ENOEXEC
             BRA @ERROR
+.endif
 
 ;## Motorola S-Record Loader
+; Supports the following record types
+; S0 - Header text
+; S1 - Data (16-bit Address)
+; S9 - Start Address
+;
 SREC:       BEQ @SYNTAXOK
             LDA #ERR::ESYNTAX
-            JSR ERRMSG::PRINT
+            JSR ERRPRINT
             JMP PROMPT
 @SYNTAXOK:  JSR CRLF
-            LDA #$05
+            LDA #$05     ; Print "Waiting for S-Record File..."
             JSR STROUT
-@START:     JSR CHARINU
+@START:     JSR CHARINU  ; Read first byte of record
             BCC @START
-            CMP #$1B
+            CMP #$1B     ; Exit if escape pressed
             BNE @GO
             JMP @END
 @GO:        CMP #'S'
-            BNE @START
+            BNE @START   ; Not an S record as it didn't start with 'S' ignore
 @START1:    JSR CHARINU
             BCC @START1
-            CMP #$1B
+            CMP #$1B     ; Exit on Escape
             BEQ @END
-            CMP #'0'
+            CMP #'0'     ; S0 record?
             BNE @S9
-            JMP @MESSAGE
-@S9:        CMP #'9'
+            JMP @MESSAGE ; Go handle S0 Record
+@S9:        CMP #'9'     ; S9 Record?
             BNE @S1
-            JMP @EXECUTE
-@S1:        CMP #'1'
-            BNE @IGNORE
+            JMP @EXECUTE ; Go handle S9 record
+@S1:        CMP #'1'     ; S1 record?
+            BNE @IGNORE  ; No,
             LDA #'#'
             JSR CHAROUT
-            JSR HEXINS ; Byte Count
+            JSR HEXINS   ; Byte Count
             BCS @END
             STA CHECKSUM
-            TAX
+            TAX          ; Byte count now in X
             DEX
-            JSR HEXINS ; Address High Byte
+            JSR HEXINS   ; Address High Byte
             BCS @END
             STA STARTH
             DEX
@@ -1080,7 +970,7 @@ SREC:       BEQ @SYNTAXOK
             ADC CHECKSUM
             CLC
             STA CHECKSUM
-            JSR HEXINS ; Address Low Byte
+            JSR HEXINS   ; Address Low Byte
             STA STARTL
             DEX
             CLC
@@ -1088,20 +978,20 @@ SREC:       BEQ @SYNTAXOK
             CLC
             STA CHECKSUM
             LDY #$00
-@DLOOP:     JSR HEXINS
+@DLOOP:     JSR HEXINS    ; Get remaining bytes and store them in memory
             STA (STARTL),Y
             CLC
             ADC CHECKSUM
-            CLC ; Don't care about the carry
+            CLC           ; Don't care about the carry
             STA CHECKSUM
             INY
             DEX
             BNE @DLOOP
             LDA #$FF
-            EOR CHECKSUM ; One's complement Checksum
+            EOR CHECKSUM  ; One's complement Checksum
             STA CHECKSUM
-            JSR HEXINS ; Senders Checksum
-            CMP CHECKSUM        ; Compare Senders checksum with our own
+            JSR HEXINS    ; Senders Checksum
+            CMP CHECKSUM  ; Compare Senders checksum with our own
             BEQ @CHECKSUMOK
             JSR CRLF
             LDA #$06
@@ -1115,25 +1005,29 @@ SREC:       BEQ @SYNTAXOK
 @END:       LDA #$07
             JSR STROUT
             JMP PROMPT
-@IGNORE:    JSR HEXINS  ; Pay no attention to non S0,S1,S9 records
+; Pay no attention to non S0,S1,S9 records
+@IGNORE:    JSR HEXINS
             BCS @END
             TAX
 @IGLOOP:    JSR HEXINS
             DEX
             BNE @IGLOOP
             JMP @START
-@EXECUTE:   JSR HEXINS
+; S9 Record aka Start Address, jump to the address specified by this record
+@EXECUTE:   JSR HEXINS  ; Get Length (but we already know it's 3 bytes long so don't keep the result)
             JSR CRLF
-            LDA #$04
+            LDA #$04    ; Print "Jump to: $"
             JSR STROUT
-            JSR HEXIN
+            JSR HEXINS   ; Get High byte of start address
             STA STARTH
-            JSR HEXIN
+            JSR HEXOUT
+            JSR HEXINS   ; Get Low byte of start address
             STA STARTL
-            JSR HEXINS
-            STZ INPBUFHEAD
-            STZ INPBUFTAIL
+            JSR HEXOUT
+            JSR HEXINS  ; Get checksum (but don't bother checking it)
+            JSR CRLF
             JMP (STARTL)
+; S0 Record (ASCII Text) - Print the message contained within
 @MESSAGE:   JSR CRLF
             LDA #$08
             JSR STROUT
@@ -1203,10 +1097,11 @@ INPBUFSZ:   PHA
             PLA
             RTS
 .ifdef duart
+; CTSCONTROL
 CTSCONTROL: PHA
-            JSR INPBUFSZ
+            JSR INPBUFSZ ; Buffer full?
             CPX #$7F
-            BCC @ENABLE
+            BCC @ENABLE  ; No, Terminal is Clear to send
             LDA #$08
             STA DUARTIMR ; Disable RX Full interrupt until INPBUF has more space
             LDA #$07
@@ -1325,6 +1220,7 @@ TICK:       LDA JIFFIES
             CMP #99
             BNE @NOWRAP
             STZ JIFFIES
+.ifdef floppy
             LDA IOTMR
             CMP #$FF
             BEQ @IOTMREND
@@ -1335,6 +1231,7 @@ TICK:       LDA JIFFIES
             BNE @IOTMREND
             JSR FDCDSELECT
 @IOTMREND:
+.endif
             ;INC IOTMR
             INC SECONDSL
             BNE @TICKEND
@@ -1396,20 +1293,7 @@ VIAT1:      LDA VIAT1CL
 
 ;#### END OF IRQ
 
-
-LOAD:       JSR FOPEN
-            BCC @OK
-@ERR:       JSR ERRMSG::PRINT
-            RTS
-@OK:        JSR FREAD
-            BCS @ERR
-            BEQ @DONE
-            JSR CHAROUT
-            BRA @OK
-@DONE:      RTS
-LOADF:
-SAVE:
-SAVEF:     RTS
+SAVE: RTS
 
 
 .ifdef wdcfix
@@ -1451,30 +1335,46 @@ HELP:    JSR CRLF
          BRA @HLOOP
 @END:    JMP PROMPT
 
-TESTWR:  LDA #$F9
-         STA SECTORBUFPTR+1
-         STZ SECTORBUFPTR
-         LDA #$0B
-         STA NEXTSECTOR+1
-         LDA #$3F
-         STA NEXTSECTOR
-         JSR FDCWRITELBA
-         LDA #$50
-         STA SECTORBUFPTR+1
-         STZ SECTORBUFPTR
-         LDA #$0B
-         STA NEXTSECTOR+1
-         LDA #$3F
-         STA NEXTSECTOR
-         JSR FDCREADLBA
-         JMP PROMPT
+; ERRPRINT: get the string for the error number and print it
+; Parameters: A - Error number
+ERRPRINT:   PHX
+            PHY
+            PHA
+            PLA
+            ASL A
+            TAX
+            LDA ERRORMSG_TABLE,X
+            STA STRLO
+            LDA ERRORMSG_TABLE+1,X
+            STA STRHI
+            LDY #$00
+@LOOP:      LDA (STRLO),Y
+            BEQ @END
+            JSR CHAROUT
+            INY
+            JMP @LOOP
+@END:       JSR CRLF
+            PLY
+            PLX
+            RTS
+
+.include "errors.inc"
+.include "math.inc"
+.ifdef floppy
+.include "disk.inc"
+.include "fat.inc"
+.include "FD.inc"
+.endif
+.include "video.inc"
 
 .SEGMENT "ROMDATA"
 T_COMMAND_TAB:
 .byte 'B'
 .byte 'C'
 .byte 'D'
+.ifdef floppy
 .byte 'E'
+.endif
 .byte 'F'
 .byte 'J'
 .byte 'L'
@@ -1491,7 +1391,9 @@ T_COMMAND_ADDR:
  .WORD BARS
  .WORD C_CLS
  .WORD DISPLAYRAM
+ .ifdef floppy
  .WORD LOADFILE
+ .endif
  .WORD FILL
  .WORD JUMP
  .WORD SREC
@@ -1508,7 +1410,9 @@ T_COMMAND_HELP_TEXT:
 .asciiz "Colour bars"
 .asciiz "Clear Screen"
 .asciiz "Display ram"
+.ifdef floppy
 .asciiz "Execute program"
+.endif
 .asciiz "Fill mem"
 .asciiz "Jump"
 .asciiz "S-Rec loader"

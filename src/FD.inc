@@ -10,7 +10,7 @@
     SEEKPOS      .word
 .endstruct
 
-;
+; FDZERO zero out FD memory
 FDZERO:     LDX #$00
 @LOOP:      STZ FDS,X
             INX
