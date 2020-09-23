@@ -101,12 +101,12 @@ FDCINIT:    STZ FDCDRVSEL
             BCC @RSTDONE
 @ERROR:     SEC
             RTS
-@RSTDONE:   LDX #04               ; Issue 4 sense interrupt commands after reset, 1 for each possible drive
+@RSTDONE:   LDX #04                    ; Issue 4 sense interrupt commands after reset, 1 for each possible drive
 @L_SNS:     JSR FDCSNS
             BCS @ERROR
             DEX
             BNE @L_SNS
-            STZ FDCCCR            ; Set Density in CCR register to 500kbit/s
+            STZ FDCCCR                 ; Set Density in CCR register to 500kbit/s
             LDA #FDC::CONFIGURE
             JSR FDCCOMMAND
             BCS @ERROR
@@ -115,31 +115,31 @@ FDCINIT:    STZ FDCDRVSEL
             STZ FDCFIFO
             JSR CHECKMSR_W
             BCS @ERROR
-            LDA #%00001111        ; Implied seeks disabled, FIFO Enabled, Polling enabled, Fifo depth 16
+            LDA #%00001111             ; Implied seeks disabled, FIFO Enabled, Polling enabled, Fifo depth 16
             STA FDCFIFO
             JSR CHECKMSR_W
             BCS @ERROR
-            STZ FDCFIFO           ; Precompensation from track 0 (default)
+            STZ FDCFIFO                ; Precompensation from track 0 (default)
             LDA #FDC::SPECIFY
             JSR FDCCOMMAND
             BCS @ERROR
             JSR CHECKMSR_W
             BCS @ERROR
-            LDA #$80              ; Step rate: 8ms, Head unload time: MAX
+            LDA #$80                   ; Step rate: 8ms, Head unload time: MAX
             STA FDCFIFO
             JSR CHECKMSR_W
             BCS @ERROR
-            LDA #$A1              ; Head Load time = 10ms, disable DMA
+            LDA #$A1                   ; Head Load time = 10ms, disable DMA
             STA FDCFIFO
             STZ FDCDRV
-            JSR FDCSELECT         ; Select drive A
+            JSR FDCSELECT              ; Select drive A
             LDA #01
-            JSR FDCSEEK           ; Seek to Track 1
+            JSR FDCSEEK                ; Seek to Track 1
             BCS @ERROR
             LDA #34
-            JSR FDCSEEK           ; Seek to Track 34
+            JSR FDCSEEK                ; Seek to Track 34
             BCS @ERROR
-            JSR FDCRECAL          ; Recalibrate
+            JSR FDCRECAL               ; Recalibrate
             BCS @END
             STZ SECTORBUFPTR
             LDA #$10
@@ -212,7 +212,7 @@ FDCREADLBA: debugmsg "Sector: ", NEXTSECTOR+1, NEXTSECTOR
 ; Reads a sector into (SECTORBUFPTR)
 FDCREAD:    PHX
             PHA
-            CPX #80         ; Don't seek past end of disk
+            CPX #80                    ; Don't seek past end of disk
             BCS @SEEKERR
             JSR FDCSELECT
 @CHECK:     LDA FDCDIR
@@ -246,43 +246,43 @@ FDCREAD:    PHX
 @OK:        JSR CHECKMSR_W
             BCC @RDY
             JMP @ERR
-@RDY:       TYA                      ; Set head and drive number
-            AND #$01                 ;
-            ASL                      ;
-            ASL                      ;
-            ORA FDCDRV               ;
-            STA FDCFIFO              ;
+@RDY:       TYA                        ; Set head and drive number
+            AND #$01                   ;
+            ASL                        ;
+            ASL                        ;
+            ORA FDCDRV                 ;
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCC @TRACK
             JMP @ERR
-@TRACK:     TXA                      ; Set track number
-            STA FDCFIFO              ;
+@TRACK:     TXA                        ; Set track number
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCS @ERR
-            TYA                      ; Set head number (again...)
-            AND #$01                 ;
-            STA FDCFIFO              ;
+            TYA                        ; Set head number (again...)
+            AND #$01                   ;
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCS @ERR
-            PLA                      ; Set sector number
-            PHA                      ;
-            STA FDCFIFO              ;
+            PLA                        ; Set sector number
+            PHA                        ;
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCS @ERR
-            LDA #$02                 ; Set bytes per sector (512)
-            STA FDCFIFO              ;
+            LDA #$02                   ; Set bytes per sector (512)
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCS @ERR
-            PLA                      ; Set last sector number
-            STA FDCFIFO              ;
+            PLA                        ; Set last sector number
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCS @ERR+1
-            LDA #$1B                 ; Set intersector gap length
-            STA FDCFIFO              ;
+            LDA #$1B                   ; Set intersector gap length
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCS @ERR+1
-            LDA #$FF                 ; Set datalength
-            STA FDCFIFO              ;
+            LDA #$FF                   ; Set datalength
+            STA FDCFIFO                ;
             LDX #$00
 @READ:      delay $05
             LDA FDCMSR
@@ -338,7 +338,7 @@ FDCWRITELBA: debugmsg "Sector: ", NEXTSECTOR+1, NEXTSECTOR
 ; Reads a sector into (SECTORBUFPTR)
 FDCWRITE:   PHX
             PHA
-            CPX #80         ; Don't seek past end of disk
+            CPX #80                    ; Don't seek past end of disk
             BCS @SEEKERR
             JSR FDCSELECT
 @CHECK:     LDA FDCDIR
@@ -371,43 +371,43 @@ FDCWRITE:   PHX
 @OK:        JSR CHECKMSR_W
             BCC @RDY
             JMP @ERR
-@RDY:       TYA                      ; Set head and drive number
-            AND #$01                 ;
-            ASL                      ;
-            ASL                      ;
-            ORA FDCDRV               ;
-            STA FDCFIFO              ;
+@RDY:       TYA                        ; Set head and drive number
+            AND #$01                   ;
+            ASL                        ;
+            ASL                        ;
+            ORA FDCDRV                 ;
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCC @TRACK
             JMP @ERR
-@TRACK:     TXA                      ; Set track number
-            STA FDCFIFO              ;
+@TRACK:     TXA                        ; Set track number
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCS @ERR
-            TYA                      ; Set head number (again...)
-            AND #$01                 ;
-            STA FDCFIFO              ;
+            TYA                        ; Set head number (again...)
+            AND #$01                   ;
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCS @ERR
-            PLA                      ; Set sector number
-            PHA                      ;
-            STA FDCFIFO              ;
+            PLA                        ; Set sector number
+            PHA                        ;
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCS @ERR
-            LDA #$02                 ; Set bytes per sector (512)
-            STA FDCFIFO              ;
+            LDA #$02                   ; Set bytes per sector (512)
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCS @ERR
-            PLA                      ; Set last sector number
-            STA FDCFIFO              ;
+            PLA                        ; Set last sector number
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCS @ERR+1
-            LDA #$1B                 ; Set intersector gap length
-            STA FDCFIFO              ;
+            LDA #$1B                   ; Set intersector gap length
+            STA FDCFIFO                ;
             JSR CHECKMSR_W
             BCS @ERR+1
-            LDA #$FF                 ; Set datalength
-            STA FDCFIFO              ;
+            LDA #$FF                   ; Set datalength
+            STA FDCFIFO                ;
             LDX #$00
 @WRITE:     delay $05
             LDA FDCMSR
@@ -503,26 +503,26 @@ FDCRECAL:   LDA #FDC::RECALIBRATE
 
 ; SENSE INTERRUPT
 ; Sense interrupt codes from FDC and save them to FDDSR0 and FDDSR1
-FDCSNS:     LDA #FDC::SENSE         ; Send SENSE command
+FDCSNS:     LDA #FDC::SENSE            ; Send SENSE command
             JSR FDCCOMMAND
             BCS @END
             delay $40
-            LDA FDCMSR              ; Sense interrupt will fail unless SEEK/RECAL is complete
-            AND #$F0                ; In this case MSR will be 0x80
-            CMP #$80                ;
-            BEQ FDCSNS              ; If it is, issue the sense again
-@DATA:      JSR CHECKMSR_R          ; Wait for data
+            LDA FDCMSR                 ; Sense interrupt will fail unless SEEK/RECAL is complete
+            AND #$F0                   ; In this case MSR will be 0x80
+            CMP #$80                   ;
+            BEQ FDCSNS                 ; If it is, issue the sense again
+@DATA:      JSR CHECKMSR_R             ; Wait for data
             BCS @END
-            LDA FDCFIFO             ;
-            STA FDCSR0              ; Save SR0
+            LDA FDCFIFO                ;
+            STA FDCSR0                 ; Save SR0
             delay $40
-            LDA FDCMSR              ; Sense interrupt will fail unless SEEK/RECAL is complete
-            AND #$F0                ; In this case MSR will be 0x80
-            CMP #$80                ;
-            BEQ FDCSNS              ; If it is, issue the sense again
-@RESULT:    JSR CHECKMSR_R          ; Get SR1
+            LDA FDCMSR                 ; Sense interrupt will fail unless SEEK/RECAL is complete
+            AND #$F0                   ; In this case MSR will be 0x80
+            CMP #$80                   ;
+            BEQ FDCSNS                 ; If it is, issue the sense again
+@RESULT:    JSR CHECKMSR_R             ; Get SR1
             BCS @END
-            LDA FDCFIFO             ; Save SR1
+            LDA FDCFIFO                ; Save SR1
             CLC
 @END:       RTS
 

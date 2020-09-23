@@ -82,7 +82,7 @@ FNPARSE:    LDX #$00
             INY
             DEX
             BNE @LOOP3
-            BRA @ERROR ; Extension missing?
+            BRA @ERROR ; Extension missing!
 @JUMPTOEXT: INY
 @EXT:       LDX #08
 @EXTLOOP:   LDA (FAT_FILENAMEPTR),Y
@@ -116,11 +116,11 @@ FATINIT:    LDA #$FF
             RTS
 @OK:        STZ FAT_TYPE
             LDA PTR_BPB_MEDDESC
-            CMP #$E5
+            CMP #$E5                                ; Valid Media type?
             BCC @NOBPB
             STA FAT_MEDDESC
             LDA PTR_BPB_LOGSECTS
-            ORA PTR_BPB_LOGSECTS+1
+            ORA PTR_BPB_LOGSECTS+1                  ; If logical sectors = 0 then throw an error (because FAT32 is not supported)
             BNE @BPB
 @NOBPB:     LDA #ERR::EIO
             SEC
@@ -133,19 +133,19 @@ FATINIT:    LDA #$FF
             ; Based on information from https://staff.washington.edu/dittrich/misc/fatgen103.pdf
             ; RootDirSectors = ((PTR_BPB_NUMROOT * 32) + (PTR_BPB_BPLS – 1)) / PTR_BPB_BPLS;
 
-            m_copy16 PTR_BPB_NUMROOT, MR_1                    ; Multiply BPB_NUMROOT by 32
+            m_copy16 PTR_BPB_NUMROOT, MR_1          ; Multiply BPB_NUMROOT by 32
             LDY #$05
 @MUL32:     ASL MR_1
             ROL MR_1+1
             DEY
-            BNE @MUL32                                        ; After completion, MR_1 contains (PTR_BPB_NUMROOT * 32)
-            m_copy16 PTR_BPB_BPLS, MR_2                       ; Copy PTR_BPB_BPLS to MR_2
-            m_dec16 MR_2                                      ; And subtract 1
-            JSR add                                           ; Add MR_1 to MR_2
-            m_copy16 MR_3, MR_2                               ; Copy result to MR_3 (dividend)
-            m_copy16 PTR_BPB_BPLS, MR_1                       ; Copy PTR_BPB_BPLS to MR_1 (divisor)
-            JSR divide                                        ; And Divide
-            m_copy16 MR_2, FAT_ROOTSECTS                      ; MR_2 now contains the size of root sectors, save result
+            BNE @MUL32                              ; After completion, MR_1 contains (PTR_BPB_NUMROOT * 32)
+            m_copy16 PTR_BPB_BPLS, MR_2             ; Copy PTR_BPB_BPLS to MR_2
+            m_dec16 MR_2                            ; And subtract 1
+            JSR add                                 ; Add MR_1 to MR_2
+            m_copy16 MR_3, MR_2                     ; Copy result to MR_3 (dividend)
+            m_copy16 PTR_BPB_BPLS, MR_1             ; Copy PTR_BPB_BPLS to MR_1 (divisor)
+            JSR divide                              ; And Divide
+            m_copy16 MR_2, FAT_ROOTSECTS            ; MR_2 now contains the size of root sectors, save result
 
             ;
             ; Calculate FirstDataSector
@@ -223,9 +223,15 @@ FAT_GETCLUSTER:
             PHX
             LDA FAT_CLUSTERNUM+1
             STA MR_1+1
-            CMP #$0F
+            LDX FAT_TYPE
+            DEX
+            BEQ @FAT12
+@FAT16:     CMP #$FF                                ; FAT16 - EOF Cluster number is $FFFX
             BCS @CHECKLSB
-            ORA FAT_CLUSTERNUM
+            BRA @CHECK0          
+@FAT12:     CMP #$0F                                ; FAT12 - EOF Cluster number is $FFX
+            BCS @CHECKLSB
+@CHECK0:    ORA FAT_CLUSTERNUM                      ; If next cluster is 0 treat as EOF
             BEQ @EOF
             LDA FAT_CLUSTERNUM
             STA MR_1
@@ -239,7 +245,7 @@ FAT_GETCLUSTER:
             BCS @EOF
 @GETCLUSTER:
             SEC
-            SBC #$02
+            SBC #$02                               ; First Data cluster is Cluster 2
             STA MR_1
             LDA MR_1+1
             SBC #$00
@@ -264,7 +270,7 @@ FAT_GETCLUSTER:
             ADC #$00
             STA NEXTSECTOR+1
             BRA @LOADLOOP
-@CLSTRDONE: m_copy16 SECTORBUFPTR, FATSECTORDEST          ; Remember where we left off
+@CLSTRDONE: m_copy16 SECTORBUFPTR, FATSECTORDEST    ; Remember where we left off
             JSR FAT_FOLLOW
             BCS @END
             CLC
@@ -311,27 +317,27 @@ FAT_FOLLOW:
             ;
             ; Fat Sector number = Reserved sectors + (Fat offset / Bytes per sector);
             ;
-            m_copy16 FAT_BPLS, MR_1       ; MR_1 = Bytes per logical sector
-                                          ; MR_2 = Fat Offset
+            m_copy16 FAT_BPLS, MR_1                 ; MR_1 = Bytes per logical sector
+                                                    ; MR_2 = Fat Offset
             JSR divide
 
             ;
             ; MR_2 now contains the result of (Fat offset / Bytes per sector)
             ; MR_3 contains the remainder (In this case FAT_ENTOFFSET aka offset of the FAT cluster within this Fat Sector) 
             ;
-            m_copy16 MR_3, FAT_ENTOFFSET   ; Save FAT_ENTOFFSET
+            m_copy16 MR_3, FAT_ENTOFFSET            ; Save FAT_ENTOFFSET
             m_copy16 FAT_RESERVED, MR_1
-            JSR add                        ; Reserved sectors + (Fat offset / Bytes per sector)
-            m_copy16 MR_3, NEXTSECTOR      ; Set as next sector
-            m_add16 FAT_RESERVED, FAT_SIZE ; Now check that we aren't trying to read past the end of the primary FAT
+            JSR add                                 ; Reserved sectors + (Fat offset / Bytes per sector)
+            m_copy16 MR_3, NEXTSECTOR               ; Set as next sector
+            m_add16 FAT_RESERVED, FAT_SIZE          ; Now check that we aren't trying to read past the end of the primary FAT
             LDA NEXTSECTOR+1
             CMP MR_3+1
             BCC @FATSECTOK
-            BNE @FATERR                    ; NEXTSECTOR > end of fat, error
+            BNE @FATERR                             ; NEXTSECTOR > end of fat, error
             LDA NEXTSECTOR
             CMP MR_3
-            BCC @FATSECTOK                 ; NEXTSECTOR < end of fat, OK
-            ;BEQ @FATSECTOK                 ; NEXTSECTOR = End of fat ( I think this is wrong )
+            BCC @FATSECTOK                          ; NEXTSECTOR < end of fat, OK
+            ;BEQ @FATSECTOK                         ; NEXTSECTOR = End of fat ( I think this is wrong )
 @FATERR:    SEC
             LDA #ERR::EIO
             RTS
@@ -351,9 +357,9 @@ FAT_FOLLOW:
             BCC @OK
             RTS
 @OK:        m_copy16 NEXTSECTOR, FAT_CACHED
-            LDA FAT_TYPE            ; FAT-12 sometimes needs half a nibble from the next sector
-            LSR A                   ; When the Cluster is at position 511 of the FAT
-            BCC @CACHED             ; For any other FAT type, skip this step
+            LDA FAT_TYPE                            ; FAT-12 sometimes needs half a nibble from the next sector
+            LSR A                                   ; When the Cluster is at position 511 of the FAT
+            BCC @CACHED                             ; For any other FAT type, skip this step
             LDA NEXTSECTOR
             CLC
             ADC #$01
