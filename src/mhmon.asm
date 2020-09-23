@@ -237,7 +237,6 @@ INITFLOPPY: JSR FDZERO
             printmsg "FDC ERROR"
 MAIN:       LDA #$00
             JSR STROUT
-            JSR CRLF
             JMP PROMPT
 
 CHARIN:     PHX
@@ -1523,7 +1522,9 @@ T_COMMAND_HELP_TEXT:
 .byte $00
 
 
-T_MOTD:             .BYTE "LIV2 ",$FF,$0C,"6",$FF,$0A,"5",$FF,$09,"C",$FF,$0A,"02 Monitor ROM",$00
+T_MOTD:             .BYTE "LIV2 ",$FF,$0C,"6",$FF,$0A,"5",$FF,$09,"C",$FF,$0A,"02 Monitor ROM - "
+.incbin "obj/builddate.txt"
+.BYTE $00
 T_BRK:             .asciiz "BRK AT $"
 T_ADDR:         .asciiz "Addrs"
 T_START:             .asciiz "Start Addr: $"
