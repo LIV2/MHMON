@@ -105,7 +105,7 @@ FATINIT:    LDA #$FF
             LDA PTR_BPB_LOGSECTS
             ORA PTR_BPB_LOGSECTS+1                  ; If logical sectors = 0 then throw an error (because FAT32 is not supported)
             BNE @BPB
-@NOBPB:     LDA #ERR::EIO
+@NOBPB:     LDA #ERR::EFSNOSUPPORT
             SEC
             RTS
 @BPB:       m_copy16 PTR_BPB_BPLS, FAT_BPLS
@@ -199,7 +199,7 @@ FATINIT:    LDA #$FF
             STA FAT_TYPE
             BRA @DETECTED
 @FAT32:     debugmsg "Detected FAT32 (not supported)"
-            LDA #ERR::EIO
+            LDA #ERR::EFSNOSUPPORT
 @DETECTED:  RTS
 
 FAT_GETCLUSTER:

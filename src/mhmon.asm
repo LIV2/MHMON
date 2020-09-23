@@ -467,6 +467,30 @@ primm4:
 
 
 ; **** Commands ****
+
+TST_FOPEN:  CMP #' '
+            BNE @STXERR
+            LDA #<CMDBUF+2
+            STA FD_FILENAMEPTR
+            LDA #>CMDBUF
+            STA FD_FILENAMEPTR+1
+            JSR FOPEN
+            BCS @ERROR
+            JSR PRIMM
+            .ASCIIZ "Opened with FD #"
+            TXA
+            JSR HEXTOASC
+            JSR CRLF
+            ;JSR FDFREE
+@END:       JMP PROMPT
+@STXERR:    LDA #ERR::ESYNTAX
+@ERROR:     CMP #$00 ; EOF?
+            BEQ @END
+            JSR ERRPRINT
+            JMP PROMPT
+
+
+; BARS: prints a color bar test pattern on the display
 BARS:       
 .ifdef video
             BNE @SYNTAXERR
@@ -619,29 +643,27 @@ GO_DISPLAY: JSR CRLF
             JSR STROUT        ; Print "Addr: "
             LDA #$09          ; TAB
             JSR CHAROUT
-            LDX #$10
             LDY #$00
 DISPLOOP1:  TYA               ; Loop1: Display Lower Address Nibble
             JSR HEXTOASC
             LDA #' '
             JSR CHAROUT
             INY
-            DEX
+            CPY #$10
             BNE DISPLOOP1
             JSR CRLF
             LDA #'-'          ; Loop2: Draw horizontal rule
-            LDX #$37          ;
+            LDY #$37          ;
 DISPLOOP2:  JSR CHAROUT       ;
-            DEX               ;
+            DEY               ;
             BNE DISPLOOP2     ;
-DISPLINE:   LDX #$10          ; Display Bytes at START,Y
-            LDY #$00
+DISPLINE:   LDY #$00          ; Display Bytes at START,Y
             JSR CRLF
             LDA #'$'          ; Display Address, i.e "$0010"
             JSR CHAROUT       ;
-            LDA STARTH  ;
+            LDA STARTH        ;
             JSR HEXTOASC      ;
-            LDA STARTL  ;
+            LDA STARTL        ;
             JSR HEXTOASC      ;
             LDA #$09          ; TAB
             JSR CHAROUT       ;
@@ -658,7 +680,8 @@ DISPLINE1:  LDA (STARTL),Y    ; Display 16 Bytes 0-F for each line
             LDA STARTL
             CMP ENDL
             BCS DISPLEND
-@NOMATCH:   DEX                     ;
+@NOMATCH:   INY
+            CPY #$10                ;
             BNE DISPLINE1           ; If we have displayed <16 Bytes keep looping
             BRA DISPLINE            ;
 DISPLEND:   JMP PROMPT
@@ -1100,7 +1123,7 @@ INPBUFSZ:   PHA
 ; CTSCONTROL
 CTSCONTROL: PHA
             JSR INPBUFSZ ; Buffer full?
-            CPX #$7F
+            CPX #$7F 
             BCC @ENABLE  ; No, Terminal is Clear to send
             LDA #$08
             STA DUARTIMR ; Disable RX Full interrupt until INPBUF has more space
@@ -1381,6 +1404,7 @@ T_COMMAND_TAB:
 .byte 'M'
 .byte 'R'
 .byte 'S'
+.byte 'T'
 .byte 'U'
 .byte 'V'
 .byte 'W'
@@ -1400,6 +1424,7 @@ T_COMMAND_ADDR:
  .WORD MEMTEST
  .WORD READMEM
  .WORD SLEEP
+ .WORD TST_FOPEN
  .WORD UNLOAD
  .WORD SETMODE
  .WORD WRITEMEM
@@ -1419,6 +1444,7 @@ T_COMMAND_HELP_TEXT:
 .asciiz "Mem test"
 .asciiz "Read mem"
 .asciiz "Sleep"
+.asciiz "Test FOPEN"
 .asciiz "Switch to ROM"
 .asciiz "Set Video mode"
 .asciiz "Write mem"
@@ -1426,12 +1452,12 @@ T_COMMAND_HELP_TEXT:
 .byte $00
 
 
-T_MOTD:             .BYTE "LIV2 ",$FF,$0C,"6",$FF,$0A,"5",$FF,$09,"C",$FF,$0A,"02 Monitor ROM - "
+T_MOTD:         .BYTE "LIV2 ",$FF,$0C,"6",$FF,$0A,"5",$FF,$09,"C",$FF,$0A,"02 Monitor ROM - "
 .incbin "obj/builddate.txt"
 .BYTE $00
-T_BRK:             .asciiz "BRK AT $"
+T_BRK:          .asciiz "BRK AT $"
 T_ADDR:         .asciiz "Addrs"
-T_START:             .asciiz "Start Addr: $"
+T_START:        .asciiz "Start Addr: $"
 T_JUMP:         .asciiz "Jump to: $"
 T_SRECWAIT:     .BYTE "Waiting for S-Record File...",$0A,$0D,$00
 T_SCHKSUMERR:   .asciiz "CHECKSUM FAILED FOR: $"
@@ -1455,6 +1481,6 @@ STR_TABLE:
 .WORD   T_BRKPROMPT
 
 .SEGMENT "VECTORS" ; 6502 VECTORS
-            .WORD IRQ
-            .WORD COLDSTRT
-            .WORD IRQ
+        .WORD IRQ
+        .WORD COLDSTRT
+        .WORD IRQ

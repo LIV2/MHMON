@@ -173,8 +173,8 @@ FDCINIT:    LDX #FDCVAREND-FDCVARSTART
             BCS @ERROR
             JSR FDCRECAL               ; Recalibrate
             BCS @END
-            JSR FDCCHGCHK+5       ; Assume disk is changed and setup media type if a disk is present
-            CLC                   ; Throw away error result from FDCCHGCHK
+            JSR FDCCHGCHK+5            ; Assume disk is changed and setup media type if a disk is present
+            CLC                        ; Throw away error result from FDCCHGCHK
 @END:       RTS
 
 LBACHS:     
@@ -195,7 +195,7 @@ LBACHS:
             LDA MR_3
 
             m_copy16 MR_3, MR_2        ; HEAD = (LBA % (Heads * Sectors per track)) / Sectors per track
-            LDA FDCSPT                     ; LBA % (Heads * Sectors per track) already in MR_3 as remainder of previous division
+            LDA FDCSPT                 ; LBA % (Heads * Sectors per track) already in MR_3 as remainder of previous division
             STA MR_1                   ; Sectors per track
             JSR divide
             LDA MR_2                   ; Get the result
@@ -565,25 +565,25 @@ FDCREADID:  PHX
             LDX #$00
 @LOOP:      LDA FDCMSR
             BIT #$10
-	    BEQ @DONE ; MSR reports no command in progress, end
-	    CMP #$D0  ; Does the FDC have a byte for me to read?
-	    BNE @LOOP ; No, wait until it does
-	    LDA FDCFIFO
-	    STA FDCSR0,X
-	    INX
-	    BRA @LOOP
+            BEQ @DONE ; MSR reports no command in progress, end
+            CMP #$D0  ; Does the FDC have a byte for me to read?
+            BNE @LOOP ; No, wait until it does
+            LDA FDCFIFO
+            STA FDCSR0,X
+            INX
+            BRA @LOOP
 @DONE:      LDA FDCSR0
-	    AND #$F0
-	    BNE @ERR
-	    PLY
-	    PLX
-	    CLC
-	    RTS
+            AND #$F0
+            BNE @ERR
+            PLY
+            PLX
+            CLC
+            RTS
 @ERR:       SEC
             LDA #ERR::EIO
-	    PLX
-	    PLY
-	    RTS
+            PLX
+            PLY
+            RTS
 
 ;;FDCREADID:  PHX
 ;            PHY

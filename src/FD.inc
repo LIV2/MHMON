@@ -4,6 +4,7 @@
 .struct FD
     FLAGS        .byte
     DEVICE       .byte
+    CLUSTERSIZE  .byte
     FIRSTCLUSTER .word
     CURCLUSTER   .word
     NEXTCLUSTER  .word
@@ -48,6 +49,12 @@ FOPEN:      LDA (FD_FILENAMEPTR)
             BCS @ERR+2
             LDA FDCDRV
             STA FDS+FD::DEVICE,X
+            LDA FAT_LSPC
+            CMP #$01 ; Throw an error for LSPC > 1 for now until I fix support
+            BEQ @SUPPORTED
+            LDA #ERR::EFSNOSUPPORT
+            RTS
+@SUPPORTED: STA FDS+FD::CLUSTERSIZE,X
             LDA FAT_CLUSTERNUM+1
             STA FDS+FD::FIRSTCLUSTER+1,X
             STA FDS+FD::NEXTCLUSTER+1,X
@@ -56,7 +63,6 @@ FOPEN:      LDA (FD_FILENAMEPTR)
             STA FDS+FD::NEXTCLUSTER,X
             STZ FDS+FD::SEEKPOS,X
             STZ FDS+FD::SEEKPOS+1,X
-
             JSR FDCACHE
             BCS @ERR+2
             RTS
