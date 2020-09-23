@@ -21,7 +21,8 @@ FAT_DATASTART    = FAT_ROOTSTART+4
 FAT_DATASECTS    = FAT_DATASTART+4
 FAT_DATACLUSTERS = FAT_DATASECTS+4
 FAT_TYPE         = FAT_DATACLUSTERS+4
-FAT_CLUSTERNUM   = FAT_TYPE+1
+FAT_MEDDESC      = FAT_TYPE+1
+FAT_CLUSTERNUM   = FAT_MEDDESC+1
 FAT_ENTOFFSET    = FAT_CLUSTERNUM+4
 FAT_CACHED       = FAT_ENTOFFSET+2
 FAT_SIZE         = FAT_CACHED+4
@@ -114,13 +115,17 @@ FATINIT:    LDA #$FF
             BCC @OK
             RTS
 @OK:        STZ FAT_TYPE
+            LDA PTR_BPB_MEDDESC
+            CMP #$E5
+            BCC @NOBPB
+            STA FAT_MEDDESC
             LDA PTR_BPB_LOGSECTS
             ORA PTR_BPB_LOGSECTS+1
-            BNE @SUPPORTED
-            LDA #ERR::EIO
+            BNE @BPB
+@NOBPB:     LDA #ERR::EIO
             SEC
             RTS
-@SUPPORTED: m_copy16 PTR_BPB_BPLS, FAT_BPLS
+@BPB:       m_copy16 PTR_BPB_BPLS, FAT_BPLS
             m_copy16 PTR_BPB_RESERVED, FAT_RESERVED
             m_copy16 PTR_BPB_LOGSECPERFAT, FAT_SIZE
       
@@ -210,7 +215,8 @@ FATINIT:    LDA #$FF
             LDA #$02
             STA FAT_TYPE
             BRA @DETECTED
-@FAT32:     debugmsg "Detected FAT32"
+@FAT32:     debugmsg "Detected FAT32 (not supported)"
+            LDA #ERR::EIO
 @DETECTED:  RTS
 
 FAT_GETCLUSTER:
@@ -317,15 +323,15 @@ FAT_FOLLOW:
             m_copy16 FAT_RESERVED, MR_1
             JSR add                        ; Reserved sectors + (Fat offset / Bytes per sector)
             m_copy16 MR_3, NEXTSECTOR      ; Set as next sector
-            m_add16 FAT_RESERVED, FAT_SIZE
+            m_add16 FAT_RESERVED, FAT_SIZE ; Now check that we aren't trying to read past the end of the primary FAT
             LDA NEXTSECTOR+1
             CMP MR_3+1
             BCC @FATSECTOK
-            BNE @FATERR
+            BNE @FATERR                    ; NEXTSECTOR > end of fat, error
             LDA NEXTSECTOR
             CMP MR_3
-            BCC @FATSECTOK
-            BEQ @FATSECTOK
+            BCC @FATSECTOK                 ; NEXTSECTOR < end of fat, OK
+            ;BEQ @FATSECTOK                 ; NEXTSECTOR = End of fat ( I think this is wrong )
 @FATERR:    SEC
             LDA #ERR::EIO
             RTS
@@ -380,7 +386,7 @@ FAT_FOLLOW:
             BCC @FAT16OFFS
             ;
             ; Fat-12 hackery
-            ; Even cluster use FAT_ENTOFFSET + the lower nibble of FAT_ENTOFFSET+1 to form a 12-bit cluster id
+            ; Even clusters use FAT_ENTOFFSET + the lower nibble of FAT_ENTOFFSET+1 to form a 12-bit cluster id
             ; E.g 0x12 0x34 would translate to cluster 0x412
             ;
             ; Odd clusters use FAT_ENTOFFSET's high nibble as it's low nibble and FAT_ENTOFFSET+1 as the higher 2 nibbles
