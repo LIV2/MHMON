@@ -3,17 +3,14 @@ PROGNAME = mhmon
 BINFILE = $(PROGNAME).bin
 CFGFILE = liv2.cfg
 
-.PHONY: clean obj/builddate.txt
+.PHONY: clean
 
-obj/%.o: src/%.asm src/*.inc
-	ca65 $< --cpu 65c02 -o $@ -I src
-
-all:	obj/$(PROGNAME).o obj/builddate.txt
+all:	obj/$(PROGNAME).o
 	ld65 -o bin/$(BINFILE) -Ln label -v -vm -m obj/map -C $(CFGFILE) $< 
 
-obj/builddate.txt:
-	@date +"Built %d-%b-%Y at %H:%M:%S" > obj/builddate.txt
-
+obj/%.o: src/%.asm src/*.inc
+	- @date +"Built %d-%b-%Y at %H:%M:%S" > obj/builddate.txt
+	- ca65 $< --cpu 65c02 -o $@ -I src
 
 clean:
 	- mkdir -p obj

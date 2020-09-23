@@ -11,23 +11,6 @@ PTR_BPB_MEDDESC      = SECTORBUF+$15 ; Media descriptor
 PTR_BPB_LOGSECPERFAT = SECTORBUF+$16 ; Logical sectors per FAT
 PTR_BPB_VOLLABEL     = SECTORBUF+$2B ; Volume Label
 
-;;; FAT Vars
-FAT_ROOTSECTS    = FDCDRV+1
-FAT_BPLS         = FAT_ROOTSECTS+4
-FAT_LSPC         = FAT_BPLS+4
-FAT_RESERVED     = FAT_LSPC+4
-FAT_ROOTSTART    = FAT_RESERVED+4
-FAT_DATASTART    = FAT_ROOTSTART+4
-FAT_DATASECTS    = FAT_DATASTART+4
-FAT_DATACLUSTERS = FAT_DATASECTS+4
-FAT_TYPE         = FAT_DATACLUSTERS+4
-FAT_MEDDESC      = FAT_TYPE+1
-FAT_CLUSTERNUM   = FAT_MEDDESC+1
-FAT_ENTOFFSET    = FAT_CLUSTERNUM+4
-FAT_CACHED       = FAT_ENTOFFSET+2
-FAT_SIZE         = FAT_CACHED+4
-FAT_FILENAME     = FAT_SIZE+4
-
 ;#######
 ;# FAT #
 ;#######
@@ -122,7 +105,7 @@ FATINIT:    LDA #$FF
             LDA PTR_BPB_LOGSECTS
             ORA PTR_BPB_LOGSECTS+1                  ; If logical sectors = 0 then throw an error (because FAT32 is not supported)
             BNE @BPB
-@NOBPB:     LDA #ERR::EIO
+@NOBPB:     LDA #ERR::EFSNOSUPPORT
             SEC
             RTS
 @BPB:       m_copy16 PTR_BPB_BPLS, FAT_BPLS
@@ -216,7 +199,7 @@ FATINIT:    LDA #$FF
             STA FAT_TYPE
             BRA @DETECTED
 @FAT32:     debugmsg "Detected FAT32 (not supported)"
-            LDA #ERR::EIO
+            LDA #ERR::EFSNOSUPPORT
 @DETECTED:  RTS
 
 FAT_GETCLUSTER:
