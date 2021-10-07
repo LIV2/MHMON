@@ -467,7 +467,7 @@ primm4:
 
 
 ; **** Commands ****
-
+.ifdef floppy
 TST_FOPEN:  CMP #' '
             BNE @STXERR
             LDA #<CMDBUF+2
@@ -488,7 +488,7 @@ TST_FOPEN:  CMP #' '
             BEQ @END
             JSR ERRPRINT
             JMP PROMPT
-
+.endif
 
 ; BARS: prints a color bar test pattern on the display
 BARS:       
@@ -1404,7 +1404,9 @@ T_COMMAND_TAB:
 .byte 'M'
 .byte 'R'
 .byte 'S'
+.ifdef floppy
 .byte 'T'
+.endif
 .byte 'U'
 .byte 'V'
 .byte 'W'
@@ -1424,7 +1426,9 @@ T_COMMAND_ADDR:
  .WORD MEMTEST
  .WORD READMEM
  .WORD SLEEP
+ .ifdef floppy
  .WORD TST_FOPEN
+ .endif
  .WORD UNLOAD
  .WORD SETMODE
  .WORD WRITEMEM
@@ -1444,7 +1448,9 @@ T_COMMAND_HELP_TEXT:
 .asciiz "Mem test"
 .asciiz "Read mem"
 .asciiz "Sleep"
+.ifdef floppy
 .asciiz "Test FOPEN"
+.endif
 .asciiz "Switch to ROM"
 .asciiz "Set Video mode"
 .asciiz "Write mem"
