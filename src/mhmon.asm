@@ -667,7 +667,10 @@ DISPLINE:   LDY #$00          ; Display Bytes at START,Y
             JSR HEXTOASC      ;
             LDA #$09          ; TAB
             JSR CHAROUT       ;
-DISPLINE1:  LDA (STARTL),Y    ; Display 16 Bytes 0-F for each line
+DISPLINE1:  PHY
+            LDY #$00
+            LDA (STARTL),Y    ; Display 16 Bytes 0-F for each line
+            PLY
             JSR HEXTOASC      ;
             LDA #' '          ;
             JSR CHAROUT
