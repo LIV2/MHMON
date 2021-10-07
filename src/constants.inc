@@ -99,7 +99,7 @@ SECTORBUF       = $0A00
 
 .ifdef floppy
 ;;; FAT Vars
-FAT_ROOTSECTS    = FDCDRV+1
+FAT_ROOTSECTS    = FDCVAREND+1
 FAT_BPLS         = FAT_ROOTSECTS+4
 FAT_LSPC         = FAT_BPLS+4
 FAT_RESERVED     = FAT_LSPC+4
@@ -126,4 +126,5 @@ FAT_FILENAME     = FAT_SIZE+4
       EFSNOSUPPORT = 7
       ESYNTAX      = 8
       ENOEXEC      = 9
+      ELSPC        = 10
 .endscope
