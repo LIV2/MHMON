@@ -10,6 +10,7 @@ EFILENAME:    .asciiz "Bad filename."
 EFSNOSUPPORT: .asciiz "FS not supported."
 ESYNTAX:      .asciiz "Syntax error."
 ENOEXEC:      .asciiz "Not an executable."
+ELSPC:        .asciiz "Unsupported LSPC Value :("
 
 ERRORMSG_TABLE:
 .WORD   EOK
@@ -22,3 +23,4 @@ ERRORMSG_TABLE:
 .WORD   EFSNOSUPPORT
 .WORD   ESYNTAX
 .WORD   ENOEXEC
+.WORD   ELSPC

@@ -52,7 +52,7 @@ FOPEN:      LDA (FD_FILENAMEPTR)
             LDA FAT_LSPC
             CMP #$01 ; Throw an error for LSPC > 1 for now until I fix support
             BEQ @SUPPORTED
-            LDA #ERR::EFSNOSUPPORT
+            LDA #ERR::ELSPC
             RTS
 @SUPPORTED: STA FDS+FD::CLUSTERSIZE,X
             LDA FAT_CLUSTERNUM+1
