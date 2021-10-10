@@ -287,11 +287,19 @@ FAT_FOLLOW:
             ;
             ; FAT-16 Cluster offset = N * 2
             ;
+            ; We're supposed to do (N * 2) / BPLS
+            ; This would need 17 bits at least for the divide
+            ; So we workaround by doing:
+            ; N / (BPLS/2) to find the relevant FAT Table sector
+            ; Then we double the remainder to get the FAT_ENTOFFSET
             m_copy16 FAT_CLUSTERNUM, MR_2
-            ASL MR_2
-            ROL MR_2+1
-            BRA @DONEOFFSET
-
+            m_copy16 FAT_BPLS, MR_1
+            LSR MR_1+1
+            ROR MR_1
+            JSR divide
+            ASL MR_3
+            ROL MR_3+1
+            BRA @DIV
 @NOTFAT16:  LDA #ERR::EIO
             SEC
             RTS
@@ -303,8 +311,7 @@ FAT_FOLLOW:
             m_copy16 FAT_BPLS, MR_1                 ; MR_1 = Bytes per logical sector
                                                     ; MR_2 = Fat Offset
             JSR divide
-
-            ;
+@DIV:       ;
             ; MR_2 now contains the result of (Fat offset / Bytes per sector)
             ; MR_3 contains the remainder (In this case FAT_ENTOFFSET aka offset of the FAT cluster within this Fat Sector) 
             ;
